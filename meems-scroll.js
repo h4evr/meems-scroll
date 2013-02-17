@@ -209,9 +209,9 @@ define(function () {
     }
     
     function onTouchEnd(e) {
-        var scroller = getFirstParentScroller(e);
-        
-        var newPos = scroller._meems_cursor_last_pos,
+        var scroller = getFirstParentScroller(e),
+            content = scroller.children[0],
+            newPos = scroller._meems_cursor_last_pos,
             time = ((new Date()).getTime() - scroller._meems_dragging_start) / 1000.0;
         
         var finalY, finalYPos, finalYPosTime,
@@ -223,7 +223,7 @@ define(function () {
             var scrollerHeight = scroller.offsetHeight,
                 contentHeight = scroller.children[0].offsetHeight;
             
-            finalY = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.y, newPos.y, scroller.children[0].offsetTop, time, scrollerHeight, contentHeight);
+            finalY = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.y, newPos.y, content.offsetTop, time, scrollerHeight, contentHeight);
             finalYPos = finalY[0];
             finalYPosTime = finalY[1];
             finalY = null;
@@ -235,7 +235,7 @@ define(function () {
             var scrollerWidth = scroller.offsetWidth,
                 contentWidth = scroller.children[0].offsetWidth;
             
-            finalX = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.x, newPos.x, scroller.children[0].offsetLeft, time, scrollerWidth, contentWidth);
+            finalX = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.x, newPos.x, content.offsetLeft, time, scrollerWidth, contentWidth);
             finalXPos = finalX[0];
             finalXPosTime = finalX[1];
             finalX = null;
@@ -250,11 +250,11 @@ define(function () {
         scroller._meems_dragging = false;
         
         if (transitionRule.length > 0) {
-            console.log(transitionRule);
-            scroller.children[0].style[transitionName] = transitionRule;
+            content.style[transitionName] = transitionRule;
         
             setTimeout(function() {
-                var style = scroller.children[0].style;
+                var style = content.style;
+                
                 if (finalYPos !== undefined) {
                     style.top = finalYPos + "px";
                 }
@@ -269,67 +269,7 @@ define(function () {
             return true;
         }
     }
-    
-    /*function onTouchEnd(e) {
-        var scroller = getFirstParentScroller(e);
-        
-        var newPos = scroller._meems_cursor_last_pos,
-            offsetY = scroller._meems_cursor_pos.y - newPos.y,
-            time = ((new Date()).getTime() - scroller._meems_dragging_start) / 1000.0,
-            speedY = offsetY / time,
-            totalTime = Math.abs(speedY / config.friction),
-            finalY = scroller.children[0].offsetTop - speedY * totalTime;
-        
-        var scrollerHeight = scroller.offsetHeight;
-        var contentHeight = scroller.children[0].offsetHeight;
-        
-        if (config.paging) {
-            if (finalY > scroller._meems_old_pos.y + scrollerHeight) {
-                finalY = scroller._meems_old_pos.y + scrollerHeight;
-            } else if (finalY < scroller._meems_old_pos.y - scrollerHeight) {
-                finalY = scroller._meems_old_pos.y - scrollerHeight;
-            }
-            
-            finalY = Math.round(finalY / scrollerHeight) * scrollerHeight;
-        } else if (config.snap && config.snap > 0) {
-            finalY = Math.round(finalY / config.snap) * config.snap;
-        }
-        
-        var newFinalPositionY = finalY;
-        if (contentHeight < scrollerHeight) {
-            if (newFinalPositionY < 0) {
-                newFinalPositionY = 0;
-            }
-        } else {
-            if (newFinalPositionY < -contentHeight + scrollerHeight) {
-                newFinalPositionY = -contentHeight + scrollerHeight;
-            }
-        }
-        
-        if (newFinalPositionY > 0) {
-            newFinalPositionY = 0;
-        }
-        
-        // recalculate time
-        if (finalY != newFinalPositionY) {
-            totalTime = totalTime * Math.abs((scroller.children[0].offsetTop - newFinalPositionY) / (scroller.children[0].offsetTop - finalY));
-            finalY = newFinalPositionY;
-        }
-        
-        if (totalTime > config.totalMaxTime) {
-            totalTime = config.totalMaxTime;
-        }
-        
-        scroller._meems_dragging = false;
-        scroller.children[0].style[transitionName] = "top " + totalTime + "s";
-    
-        setTimeout(function() {
-            scroller.children[0].style.top = finalY + "px";
-        }, 10);
-        
-        return cancelEvent(e);
-    }*/
-    
+
     function Scroll(elm) {
         registerHandlers(elm);
         return this;
