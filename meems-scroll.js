@@ -1,9 +1,9 @@
 define(function () {
     var config = {
-        friction: 2500.0,
+        friction: 1000.0,
         totalMaxTime: 1,
-        snap: 320,
-        paging: true,
+        snap: 0,
+        paging: false,
         scrollY: true,
         scrollX: false
     };
