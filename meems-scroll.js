@@ -1,7 +1,11 @@
 define(function () {
     var config = {
         friction: 2500.0,
-        transitionY: "top 10s"
+        totalMaxTime: 1,
+        snap: 320,
+        paging: true,
+        scrollY: true,
+        scrollX: false
     };
     
     var touchStartEventName, touchEndEventName, touchMoveEventName;
@@ -140,18 +144,133 @@ define(function () {
         }
         
         var newPos = getCursorPosition(e),
-            //offsetX = scroller._meems_cursor_pos.x - newPos.x,
-            offsetY = scroller._meems_cursor_pos.y - newPos.y;
+            offsetX = scroller._meems_cursor_pos.x - newPos.x,
+            offsetY = scroller._meems_cursor_pos.y - newPos.y,
+            style = scroller.children[0].style;
         
-        //scroller.children[0].style.left = (scroller._meems_old_pos.x - offsetX) + "px";
-        scroller.children[0].style.top = (scroller._meems_old_pos.y - offsetY) + "px";
+        if (config.scrollX) {
+            style.left = (scroller._meems_old_pos.x - offsetX) + "px";
+        }
+        
+        if (config.scrollY) {
+            style.top = (scroller._meems_old_pos.y - offsetY) + "px";
+        }
         
         scroller._meems_cursor_last_pos = newPos;
         
         return cancelEvent(e);
     }
     
+    function calculateFinalPositionAndTime(config, fingerDownPos, fingerUpPos, currentPos, 
+                                            time, scrollerSize, contentSize) {
+        var offsetY = fingerDownPos - fingerUpPos,
+            speedY = offsetY / time,
+            totalTime = Math.abs(speedY / config.friction),
+            finalPos = currentPos - speedY * totalTime;
+            
+        if (config.paging) {
+            if (finalPos > currentPos + scrollerSize) {
+                finalPos = currentPos + scrollerSize;
+            } else if (finalPos < currentPos - scrollerSize) {
+                finalPos = currentPos - scrollerSize;
+            }
+            
+            finalPos = Math.round(finalPos / scrollerSize) * scrollerSize;
+        } else if (config.snap && config.snap > 0) {
+            finalPos = Math.round(finalPos / config.snap) * config.snap;
+        }
+        
+        var newFinalPositionY = finalPos;
+        if (contentSize < scrollerSize) {
+            if (newFinalPositionY < 0) {
+                newFinalPositionY = 0;
+            }
+        } else {
+            if (newFinalPositionY < -contentSize + scrollerSize) {
+                newFinalPositionY = -contentSize + scrollerSize;
+            }
+        }
+        
+        if (newFinalPositionY > 0) {
+            newFinalPositionY = 0;
+        }
+        
+        // recalculate time
+        if (finalPos != newFinalPositionY) {
+            totalTime = totalTime * Math.abs((fingerDownPos - newFinalPositionY) / (fingerDownPos - finalPos));
+            finalPos = newFinalPositionY;
+        }
+        
+        if (totalTime > config.totalMaxTime) {
+            totalTime = config.totalMaxTime;
+        }
+        
+        return [finalPos, totalTime];
+    }
+    
     function onTouchEnd(e) {
+        var scroller = getFirstParentScroller(e);
+        
+        var newPos = scroller._meems_cursor_last_pos,
+            time = ((new Date()).getTime() - scroller._meems_dragging_start) / 1000.0;
+        
+        var finalY, finalYPos, finalYPosTime,
+            finalX, finalXPos, finalXPosTime;
+        
+        var transitionRule = "";
+        
+        if (config.scrollY) {
+            var scrollerHeight = scroller.offsetHeight,
+                contentHeight = scroller.children[0].offsetHeight;
+            
+            finalY = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.y, newPos.y, scroller.children[0].offsetTop, time, scrollerHeight, contentHeight);
+            finalYPos = finalY[0];
+            finalYPosTime = finalY[1];
+            finalY = null;
+            
+            transitionRule = "top " + finalYPosTime + "s";
+        }
+        
+        if (config.scrollX) {
+            var scrollerWidth = scroller.offsetWidth,
+                contentWidth = scroller.children[0].offsetWidth;
+            
+            finalX = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.x, newPos.x, scroller.children[0].offsetLeft, time, scrollerWidth, contentWidth);
+            finalXPos = finalX[0];
+            finalXPosTime = finalX[1];
+            finalX = null;
+            
+            if (config.scrollY) {
+                transitionRule  += ", ";
+            }
+            
+            transitionRule += "left " + finalXPosTime + "s";
+        }
+        
+        scroller._meems_dragging = false;
+        
+        if (transitionRule.length > 0) {
+            console.log(transitionRule);
+            scroller.children[0].style[transitionName] = transitionRule;
+        
+            setTimeout(function() {
+                var style = scroller.children[0].style;
+                if (finalYPos !== undefined) {
+                    style.top = finalYPos + "px";
+                }
+                
+                if (finalXPos !== undefined) {
+                    style.left = finalXPos + "px";
+                }
+            }, 10);
+            
+            return cancelEvent(e);
+        } else {
+            return true;
+        }
+    }
+    
+    /*function onTouchEnd(e) {
         var scroller = getFirstParentScroller(e);
         
         var newPos = scroller._meems_cursor_last_pos,
@@ -163,6 +282,18 @@ define(function () {
         
         var scrollerHeight = scroller.offsetHeight;
         var contentHeight = scroller.children[0].offsetHeight;
+        
+        if (config.paging) {
+            if (finalY > scroller._meems_old_pos.y + scrollerHeight) {
+                finalY = scroller._meems_old_pos.y + scrollerHeight;
+            } else if (finalY < scroller._meems_old_pos.y - scrollerHeight) {
+                finalY = scroller._meems_old_pos.y - scrollerHeight;
+            }
+            
+            finalY = Math.round(finalY / scrollerHeight) * scrollerHeight;
+        } else if (config.snap && config.snap > 0) {
+            finalY = Math.round(finalY / config.snap) * config.snap;
+        }
         
         var newFinalPositionY = finalY;
         if (contentHeight < scrollerHeight) {
@@ -185,6 +316,10 @@ define(function () {
             finalY = newFinalPositionY;
         }
         
+        if (totalTime > config.totalMaxTime) {
+            totalTime = config.totalMaxTime;
+        }
+        
         scroller._meems_dragging = false;
         scroller.children[0].style[transitionName] = "top " + totalTime + "s";
     
@@ -193,7 +328,7 @@ define(function () {
         }, 10);
         
         return cancelEvent(e);
-    }
+    }*/
     
     function Scroll(elm) {
         registerHandlers(elm);
