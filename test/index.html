@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <title>Meems Utils</title>
+        <link rel="stylesheet" href="../meems-scroll.css" type="text/css" />
         <style>
             html,body {
                 height: 100%;
@@ -16,6 +17,8 @@
                 top: 0;
                 right: 0;
                 bottom: 0;
+                width: 320px;
+                height: 480px;
             }
             
             .screen {
@@ -54,7 +57,10 @@
             require(["../meems-scroll"], function (Scroll) {
                 
                 
-                new Scroll(document.getElementById("scrolldiv"));
+                new Scroll(document.getElementById("scrolldiv"), {
+                    scrollX: true,
+                    scrollY: true
+                });
             });
         </script>
     </body>
