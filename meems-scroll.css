@@ -1,0 +1,19 @@
+.ui-scroll-bar-y, .ui-scroll-bar-x {
+    background-color: #000000;
+    border: 1px solid #ffffff;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    opacity: 0.6;
+    filter:alpha(opacity=60); /* For IE8 and earlier */
+}
+
+.ui-scroll-bar-y {
+    width: 4px;
+    right: 2px;
+}
+
+.ui-scroll-bar-x {
+    height: 4px;
+    bottom: 0;
+}

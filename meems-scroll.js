@@ -1,13 +1,4 @@
 define(function () {
-    var config = {
-        friction: 1000.0,
-        totalMaxTime: 1,
-        snap: 0,
-        paging: false,
-        scrollY: true,
-        scrollX: false
-    };
-    
     var touchStartEventName, touchEndEventName, touchMoveEventName;
     var getCursorPosition;
     
@@ -42,7 +33,13 @@ define(function () {
             }
         }
         return "transition";
-    }());    
+    }());
+    
+    (function() {
+      var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                                  window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+      window.requestAnimationFrame = requestAnimationFrame;
+    })();
     
     var addEventListener = (function() {
         if (document.addEventListener) {
@@ -76,18 +73,22 @@ define(function () {
         }
     }());
         
-    function registerHandlers(elm) {
+    function registerHandlers(elm, config) {
+        
         addEventListener(elm, touchStartEventName, onTouchStart);
         addEventListener(elm, touchMoveEventName, onTouchMove);
         addEventListener(elm, touchEndEventName, onTouchEnd);
-        elm._meems_scroll = true;
-        elm.style.overflow = 'hidden';
         
+        elm._meems_scroll = true;
+        elm._meems_config = config;
+        
+        elm.style.overflow = 'hidden';
         elm.children[0].style.position = 'absolute';
     }
     
     function removeHandlers(elm) {
         delete elm._meems_scroll;
+        delete elm._meems_config;
         removeEventListener(elm, touchStartEventName, onTouchStart);
         removeEventListener(elm, touchMoveEventName, onTouchMove);
         removeEventListener(elm, touchEndEventName, onTouchEnd);
@@ -137,7 +138,8 @@ define(function () {
     }
     
     function onTouchMove(e) {
-        var scroller = getFirstParentScroller(e);
+        var scroller = getFirstParentScroller(e),
+            config = scroller._meems_config;
         
         if (!scroller._meems_dragging) {
             return;
@@ -146,7 +148,8 @@ define(function () {
         var newPos = getCursorPosition(e),
             offsetX = scroller._meems_cursor_pos.x - newPos.x,
             offsetY = scroller._meems_cursor_pos.y - newPos.y,
-            style = scroller.children[0].style;
+            content = scroller.children[0],
+            style = content.style;
         
         if (config.scrollX) {
             style.left = (scroller._meems_old_pos.x - offsetX) + "px";
@@ -157,6 +160,8 @@ define(function () {
         }
         
         scroller._meems_cursor_last_pos = newPos;
+        
+        updateScrollbar(scroller, content);
         
         return cancelEvent(e);
     }
@@ -210,6 +215,7 @@ define(function () {
     
     function onTouchEnd(e) {
         var scroller = getFirstParentScroller(e),
+            config = scroller._meems_config,
             content = scroller.children[0],
             newPos = scroller._meems_cursor_last_pos,
             time = ((new Date()).getTime() - scroller._meems_dragging_start) / 1000.0;
@@ -228,7 +234,7 @@ define(function () {
             finalYPosTime = finalY[1];
             finalY = null;
             
-            transitionRule = "top " + finalYPosTime + "s";
+            transitionRule = "top " + finalYPosTime + "s " + config.timingFunction;
         }
         
         if (config.scrollX) {
@@ -244,7 +250,7 @@ define(function () {
                 transitionRule  += ", ";
             }
             
-            transitionRule += "left " + finalXPosTime + "s";
+            transitionRule += "left " + finalXPosTime + "s " + config.timingFunction;
         }
         
         scroller._meems_dragging = false;
@@ -254,26 +260,114 @@ define(function () {
         
             setTimeout(function() {
                 var style = content.style;
+                var time = 0;
                 
                 if (finalYPos !== undefined) {
                     style.top = finalYPos + "px";
+                    time = Math.max(time, finalYPosTime);
                 }
                 
                 if (finalXPos !== undefined) {
                     style.left = finalXPos + "px";
+                    time = Math.max(time, finalXPosTime);
                 }
-            }, 10);
+                
+                if (time > 0) {
+                    touchEndScrollbarAnimation(scroller, time);
+                }
+            }, 0);
             
             return cancelEvent(e);
         } else {
             return true;
         }
     }
+    
+    function createVerticalScrollBar(elm) {   
+        elm._meems_scrollbar_y = document.createElement("div");
+        elm._meems_scrollbar_y.className = "ui-scroll-bar-y";
+        elm._meems_scrollbar_y.style.position = "absolute";
+        elm.appendChild(elm._meems_scrollbar_y);
+    }
+    
+    function createHorizontalScrollBar(elm) {
+        elm._meems_scrollbar_x = document.createElement("div");
+        elm._meems_scrollbar_x.className = "ui-scroll-bar-x";
+        elm._meems_scrollbar_x.style.position = "absolute";
+        elm.appendChild(elm._meems_scrollbar_x);
+    }
+    
+    function touchEndScrollbarAnimation(scroller, totalTime) {
+        var content = scroller.children[0];
+        var totalMs = totalTime * 1000.0;
+        var start = (new Date()).getTime();
+        
+        function req(timestamp) {
+            updateScrollbar(scroller, content);
+            
+            if (timestamp - start < totalMs) {
+                window.requestAnimationFrame(req);
+            }
+        }
+        
+        window.requestAnimationFrame(req);
+    }
+    
+    function updateScrollbar(scroller, content) {
+        var config = scroller._meems_config;
+        
+        if (config.scrollY) {
+            var scrollbarY = scroller._meems_scrollbar_y,
+                scrollerHeight = scroller.offsetHeight * 1.0,
+                contentHeight = content.offsetHeight,
+                verticalBarH = (Math.min(scrollerHeight, contentHeight) / contentHeight) * scrollerHeight,
+                verticalBarY = (-content.offsetTop / contentHeight) * scrollerHeight;
+            
+            scrollbarY.style.top = verticalBarY + "px";
+            scrollbarY.style.height = verticalBarH + "px";
+        }
+        
+        if (config.scrollX) {
+            var scrollbarX = scroller._meems_scrollbar_x,
+                scrollerWidth = scroller.offsetWidth,
+                contentWidth = content.offsetWidth,
+                verticalBarW = (Math.min(scrollerWidth, contentWidth) / contentWidth) * scrollerWidth,
+                verticalBarX = (-content.offsetLeft / contentWidth) * scrollerWidth;
+            
+            scrollbarX.style.left = verticalBarX + "px";
+            scrollbarX.style.width = verticalBarW + "px";
+        }
+    }
 
-    function Scroll(elm) {
-        registerHandlers(elm);
+    function Scroll(elm, config) {
+        config = config || {};
+        config.friction = config.friction || 1000.0;
+        config.totalMaxTime = config.totalMaxTime || 1;
+        config.totalMaxTimesnap = config.totalMaxTimesnap || 0;
+        config.paging = config.paging === true;
+        config.scrollY = config.scrollY === false ? false : true;
+        config.scrollX =  config.scrollX === true;
+        config.timingFunction = config.timingFunction || "ease-out";
+        
+        registerHandlers(elm, config);
+        
+        if (config.scrollY) {
+            createVerticalScrollBar(elm);
+        }
+        
+        if (config.scrollX) {
+            createHorizontalScrollBar(elm);
+        }
+        
+        this._elm = elm;
         return this;
     }
+    
+    Scroll.prototype = {
+        update: function () {
+            updateScrollbar(this._elm, this._elm.children[0]);
+        }
+    };
     
     return Scroll;
 });
