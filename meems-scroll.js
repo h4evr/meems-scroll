@@ -35,11 +35,35 @@ define(function () {
         return "transition";
     }());
     
+    // requestAnimationFrame polyfill by Erik Möller
+    // fixes from Paul Irish and Tino Zijdel
+     
     (function() {
-      var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                                  window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
-      window.requestAnimationFrame = requestAnimationFrame;
-    })();
+        var lastTime = 0;
+        var vendors = ['ms', 'moz', 'webkit', 'o'];
+        for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+            window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+            window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
+                                       || window[vendors[x]+'CancelRequestAnimationFrame'];
+        }
+     
+        if (!window.requestAnimationFrame) {
+            window.requestAnimationFrame = function(callback, element) {
+                var currTime = new Date().getTime();
+                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+                var id = window.setTimeout(function() { callback(currTime + timeToCall); },
+                  timeToCall);
+                lastTime = currTime + timeToCall;
+                return id;
+            };
+        }
+     
+        if (!window.cancelAnimationFrame) {
+            window.cancelAnimationFrame = function(id) {
+                clearTimeout(id);
+            };
+        }
+    }());
     
     var addEventListener = (function() {
         if (document.addEventListener) {
@@ -133,6 +157,7 @@ define(function () {
         scroller._meems_dragging = true;
         scroller._meems_dragging_start = (new Date()).getTime();
         scroller._meems_cursor_pos = getCursorPosition(e);
+        scroller._meems_scrolling_running_animation = false;
         
         return cancelEvent(e);
     }
@@ -153,10 +178,12 @@ define(function () {
         
         if (config.scrollX) {
             style.left = (scroller._meems_old_pos.x - offsetX) + "px";
+            scroller._meems_scrollbar_x.style.display = 'block';
         }
         
         if (config.scrollY) {
             style.top = (scroller._meems_old_pos.y - offsetY) + "px";
+            scroller._meems_scrollbar_y.style.display = 'block';
         }
         
         scroller._meems_cursor_last_pos = newPos;
@@ -298,15 +325,52 @@ define(function () {
     }
     
     function touchEndScrollbarAnimation(scroller, totalTime) {
-        var content = scroller.children[0];
-        var totalMs = totalTime * 1000.0;
-        var start = (new Date()).getTime();
+        scroller._meems_scrolling_running_animation = true;
         
-        function req(timestamp) {
+        var content = scroller.children[0],
+            scrollbarX = scroller._meems_scrollbar_x,
+            scrollbarY = scroller._meems_scrollbar_y,
+            totalMs = totalTime * 1000.0,
+            start = (new Date()).getTime(), lastFrame,
+            fadeOutDuration = scroller._meems_config.fadeOutDuration * 1000.0,
+            startOp, op,
+            
+            interval;
+        
+        function fadeOut() {            
+            var timestamp = (new Date()).getTime();
+            
+            op -= interval * (timestamp - lastFrame) / 1000.0;
+            
+            scrollbarX && (scrollbarX.style.opacity = op);
+            scrollbarY && (scrollbarY.style.opacity = op);
+            
+            if (scroller._meems_scrolling_running_animation && timestamp - start < fadeOutDuration) {
+                lastFrame = timestamp;
+                window.requestAnimationFrame(fadeOut);
+            } else {
+                scrollbarX && (scrollbarX.style.display = 'none') && (scrollbarX.style.opacity = startOp);
+                scrollbarY && (scrollbarY.style.display = 'none') && (scrollbarY.style.opacity = startOp);
+                
+                scroller._meems_scrolling_running_animation = false;
+            }
+        }
+        
+        function req() {
+            var timestamp = (new Date()).getTime();
+            
             updateScrollbar(scroller, content);
             
-            if (timestamp - start < totalMs) {
+            if (scroller._meems_scrolling_running_animation && timestamp - start < totalMs) {
                 window.requestAnimationFrame(req);
+            } else {
+                startOp = 
+                     (scrollbarX && document.defaultView.getComputedStyle(scrollbarX, null).opacity) || 
+                     (scrollbarY && document.defaultView.getComputedStyle(scrollbarY, null).opacity) || 1.0;
+                op = startOp + 0.0;
+                interval = startOp / fadeOutDuration * 1000.0;
+                lastFrame = start = (new Date()).getTime();
+                window.requestAnimationFrame(fadeOut);
             }
         }
         
@@ -348,6 +412,7 @@ define(function () {
         config.scrollY = config.scrollY === false ? false : true;
         config.scrollX =  config.scrollX === true;
         config.timingFunction = config.timingFunction || "ease-out";
+        config.fadeOutDuration = config.fadeOutDuration || 1;
         
         registerHandlers(elm, config);
         
