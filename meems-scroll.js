@@ -98,7 +98,6 @@ define(function () {
     }());
         
     function registerHandlers(elm, config) {
-        
         addEventListener(elm, touchStartEventName, onTouchStart);
         addEventListener(elm, touchMoveEventName, onTouchMove);
         addEventListener(elm, touchEndEventName, onTouchEnd);
@@ -135,7 +134,7 @@ define(function () {
     }
     
     function getFirstParentScroller(e) {
-        var node = e.target;
+        var node = e.currentTarget;
         
         while (node._meems_scroll === undefined && node.parentNode) {
             node = node.parentNode;
@@ -144,55 +143,7 @@ define(function () {
         return node;
     }
     
-    function onTouchStart(e) {
-        var scroller = getFirstParentScroller(e);
         
-        scroller._meems_old_pos = {
-            x: scroller.children[0].offsetLeft,
-            y: scroller.children[0].offsetTop
-        };
-        
-        scroller.children[0].style[transitionName] = "";
-        
-        scroller._meems_dragging = true;
-        scroller._meems_dragging_start = (new Date()).getTime();
-        scroller._meems_cursor_pos = getCursorPosition(e);
-        scroller._meems_scrolling_running_animation = false;
-        
-        return cancelEvent(e);
-    }
-    
-    function onTouchMove(e) {
-        var scroller = getFirstParentScroller(e),
-            config = scroller._meems_config;
-        
-        if (!scroller._meems_dragging) {
-            return;
-        }
-        
-        var newPos = getCursorPosition(e),
-            offsetX = scroller._meems_cursor_pos.x - newPos.x,
-            offsetY = scroller._meems_cursor_pos.y - newPos.y,
-            content = scroller.children[0],
-            style = content.style;
-        
-        if (config.scrollX) {
-            style.left = (scroller._meems_old_pos.x - offsetX) + "px";
-            scroller._meems_scrollbar_x.style.display = 'block';
-        }
-        
-        if (config.scrollY) {
-            style.top = (scroller._meems_old_pos.y - offsetY) + "px";
-            scroller._meems_scrollbar_y.style.display = 'block';
-        }
-        
-        scroller._meems_cursor_last_pos = newPos;
-        
-        updateScrollbar(scroller, content);
-        
-        return cancelEvent(e);
-    }
-    
     function calculateFinalPositionAndTime(config, fingerDownPos, fingerUpPos, currentPos, 
                                             time, scrollerSize, contentSize) {
         var offsetY = fingerDownPos - fingerUpPos,
@@ -240,7 +191,86 @@ define(function () {
         return [finalPos, totalTime];
     }
     
+    var _scrollersDragging = 0; 
+    function onTouchStart(e) {
+        var scroller = getFirstParentScroller(e);
+        
+        scroller._meems_old_pos = {
+            x: scroller.children[0].offsetLeft,
+            y: scroller.children[0].offsetTop
+        };
+        
+        scroller.children[0].style[transitionName] = "";
+        
+        scroller._meems_dragging = true;
+        scroller._meems_dragging_start = (new Date()).getTime();
+        scroller._meems_cursor_pos = getCursorPosition(e);
+        scroller._meems_cursor_last_pos = scroller._meems_cursor_pos;
+        scroller._meems_scrolling_running_animation = false;
+        
+        ++_scrollersDragging;
+        
+        //return cancelEvent(e);
+    }
+    
+    function onTouchMove(e) {
+        if (_scrollersDragging <= 0) {
+            return true;
+        }
+        
+        var scroller = getFirstParentScroller(e),
+            config = scroller._meems_config;
+        
+        if (!scroller._meems_dragging) {
+            return;
+        }
+        
+        var newPos = getCursorPosition(e),
+            offsetX = scroller._meems_cursor_pos.x - newPos.x,
+            offsetY = scroller._meems_cursor_pos.y - newPos.y,
+            content = scroller.children[0],
+            style = content.style;
+        
+        if (config.scrollX) {
+            var posX = scroller._meems_old_pos.x - offsetX;
+            
+            if (!config.bouncing) {
+                if (posX > 0) {
+                    posX = 0;
+                } else if (posX < -scroller.children[0].offsetWidth + scroller.offsetWidth) {
+                    posX = -scroller.children[0].offsetWidth + scroller.offsetWidth;
+                }
+            }
+            
+            style.left = posX + "px";
+            scroller._meems_scrollbar_x.style.display = 'block';
+        }
+        
+        if (config.scrollY) {
+            var posY = scroller._meems_old_pos.y - offsetY;
+            
+            if (!config.bouncing) {
+                if (posY > 0) {
+                    posY = 0;
+                } else if (posY < -scroller.children[0].offsetHeight + scroller.offsetHeight) {
+                    posY = -scroller.children[0].offsetHeight + scroller.offsetHeight;
+                }
+            }
+            
+            style.top = posY + "px";
+            scroller._meems_scrollbar_y.style.display = 'block';
+        }
+        
+        scroller._meems_cursor_last_pos = newPos;
+        
+        updateScrollbar(scroller, content);
+        
+        //return cancelEvent(e);
+    }
+    
     function onTouchEnd(e) {
+        --_scrollersDragging;
+        
         var scroller = getFirstParentScroller(e),
             config = scroller._meems_config,
             content = scroller.children[0],
@@ -250,8 +280,6 @@ define(function () {
         var finalY, finalYPos, finalYPosTime,
             finalX, finalXPos, finalXPosTime;
         
-        var transitionRule = "";
-        
         if (config.scrollY) {
             var scrollerHeight = scroller.offsetHeight,
                 contentHeight = scroller.children[0].offsetHeight;
@@ -260,8 +288,6 @@ define(function () {
             finalYPos = finalY[0];
             finalYPosTime = finalY[1];
             finalY = null;
-            
-            transitionRule = "top " + finalYPosTime + "s " + config.timingFunction;
         }
         
         if (config.scrollX) {
@@ -272,15 +298,31 @@ define(function () {
             finalXPos = finalX[0];
             finalXPosTime = finalX[1];
             finalX = null;
-            
+        }
+        
+        scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime);
+        
+        scroller._meems_dragging = false;
+        
+        //return cancelEvent(e);
+    }
+    
+    function scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime) {
+        var config = scroller._meems_config,
+            content = scroller.children[0],
+            transitionRule = "";
+        
+        if (config.scrollY) {
+            transitionRule = "top " + finalYPosTime + "s " + config.timingFunction;
+        }
+        
+        if (config.scrollX) {            
             if (config.scrollY) {
                 transitionRule  += ", ";
             }
             
             transitionRule += "left " + finalXPosTime + "s " + config.timingFunction;
         }
-        
-        scroller._meems_dragging = false;
         
         if (transitionRule.length > 0) {
             content.style[transitionName] = transitionRule;
@@ -303,10 +345,6 @@ define(function () {
                     touchEndScrollbarAnimation(scroller, time);
                 }
             }, 0);
-            
-            return cancelEvent(e);
-        } else {
-            return true;
         }
     }
     
@@ -413,6 +451,7 @@ define(function () {
         config.scrollX =  config.scrollX === true;
         config.timingFunction = config.timingFunction || "ease-out";
         config.fadeOutDuration = config.fadeOutDuration || 1;
+        config.bouncing = config.bouncing === false ? false : true;
         
         registerHandlers(elm, config);
         
@@ -431,6 +470,20 @@ define(function () {
     Scroll.prototype = {
         update: function () {
             updateScrollbar(this._elm, this._elm.children[0]);
+        },
+        
+        scrollTo : function (x, y, duration) {
+            duration = duration || 0.25;
+            
+            if (this._elm._meems_config.scrollY) {
+                this._elm._meems_scrollbar_y.style.display = 'block';
+            }
+            
+            if (this._elm._meems_config.scrollX) {
+                this._elm._meems_scrollbar_x.style.display = 'block';
+            }
+            
+            scrollAux(this._elm, -x, duration, -y, duration);
         }
     };
     

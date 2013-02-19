@@ -11,7 +11,7 @@
                 padding: 0;
             }
             
-            #scrolldiv {                
+            #horiscrolldiv, #scrolldiv, #scrolldiv2, #horiscrolldiv > div:first-child {                
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -21,46 +21,101 @@
                 height: 480px;
             }
             
+            #horiscrolldiv > div:first-child {
+                width: 640px;
+            }
+            
+            #scrolldiv2 { 
+                left: 320px;
+            }
+            
             .screen {
                 width: 320px;
                 height: 480px;
             }
             
-            #scrolldiv > div > .screen:nth-child(even) {
+            #scrolldiv > div > .screen:nth-child(even), #scrolldiv2 > div > .screen:nth-child(odd) {
                 background-color: #ff0000;
             }
             
-            #scrolldiv > div > .screen:nth-child(odd) {
+            #scrolldiv > div > .screen:nth-child(odd), #scrolldiv2 > div > .screen:nth-child(even) {
                 background-color: #00ff00;
             }
         </style>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     </head>
     <body>
-        <div id="scrolldiv">
+        <div id="horiscrolldiv">
             <div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
-                <div class="screen"></div>
+                <div id="scrolldiv">
+                    <div>
+                        <div class="screen">
+                            <div class="screen" style="height: 150px; background-color: #ffff00;">
+                                <button onclick="goToPage2()">Page 2</button>
+                            </div>
+                        </div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                    </div>
+                </div>
+                <div id="scrolldiv2">
+                    <div>
+                        <div class="screen">
+                            <div class="screen" style="height: 150px; background-color: #ffff00;">
+                                <button onclick="goToPage1()">Page 1</button>
+                            </div>
+                        </div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                        <div class="screen"></div>
+                    </div>
+                </div>
             </div>
         </div>
     
         <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
         <script>
             require(["../meems-scroll"], function (Scroll) {
-                
-                
                 new Scroll(document.getElementById("scrolldiv"), {
-                    scrollX: true,
-                    scrollY: true
+                    scrollX: false,
+                    scrollY: true,
+                    paging: true
                 });
+                
+                new Scroll(document.getElementById("scrolldiv2"), {
+                    scrollX: false,
+                    scrollY: true,
+                    paging: true,
+                    bouncing: false
+                });
+                
+                var scrollerHor = new Scroll(document.getElementById("horiscrolldiv"), {
+                    scrollX: true,
+                    scrollY: false,
+                    paging: true,
+                    bouncing: false
+                });
+                
+                window.goToPage1 = function () {
+                    scrollerHor.scrollTo(0, 0);
+                };
+                
+                window.goToPage2 = function () {
+                    scrollerHor.scrollTo(320, 0);
+                };
             });
         </script>
     </body>

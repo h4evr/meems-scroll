@@ -11,9 +11,11 @@
 .ui-scroll-bar-y {
     width: 4px;
     right: 2px;
+    z-index: 99;
 }
 
 .ui-scroll-bar-x {
     height: 4px;
     bottom: 0;
+    z-index: 99;
 }
