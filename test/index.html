@@ -88,11 +88,20 @@
     
         <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.4/require.min.js"></script>
         <script>
+            require.config({
+                paths: {
+                    "meems-utils": "../lib/meems-utils/meems-utils",
+                    "meems-events": "../lib/meems-events/meems-events"
+                }
+            });
+            
             require(["../meems-scroll"], function (Scroll) {
-                new Scroll(document.getElementById("scrolldiv"), {
+                (new Scroll(document.getElementById("scrolldiv"), {
                     scrollX: false,
                     scrollY: true,
                     paging: true
+                })).on("scroll:end", function(eventName, x, y) {
+                    console.log("scroll ended: ", x, y);
                 });
                 
                 new Scroll(document.getElementById("scrolldiv2"), {
@@ -106,7 +115,12 @@
                     scrollX: true,
                     scrollY: false,
                     paging: true,
-                    bouncing: false
+                    bouncing: false,
+                    axisLock: true
+                });
+                
+                scrollerHor.on("scroll:end", function(eventName, x, y) {
+                    console.log("scroll hori ended: ", x, y);
                 });
                 
                 window.goToPage1 = function () {
