@@ -98,9 +98,11 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     }());
         
     function registerHandlers(elm, config) {
-        addEventListener(elm, touchStartEventName, onTouchStart);
-        addEventListener(elm, touchMoveEventName, onTouchMove);
-        addEventListener(elm, touchEndEventName, onTouchEnd);
+        if (!config.disableTouchEvents) {
+            addEventListener(elm, touchStartEventName, onTouchStart);
+            addEventListener(elm, touchMoveEventName, onTouchMove);
+            addEventListener(elm, touchEndEventName, onTouchEnd);
+        }
         
         elm._meems_scroll = true;
         elm._meems_config = config;
@@ -109,12 +111,15 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         elm.children[0].style.position = 'absolute';
     }
     
-    function removeHandlers(elm) {
+    function removeHandlers(elm, config) {
         delete elm._meems_scroll;
         delete elm._meems_config;
-        removeEventListener(elm, touchStartEventName, onTouchStart);
-        removeEventListener(elm, touchMoveEventName, onTouchMove);
-        removeEventListener(elm, touchEndEventName, onTouchEnd);
+        
+        if (!config.disableTouchEvents) {
+            removeEventListener(elm, touchStartEventName, onTouchStart);
+            removeEventListener(elm, touchMoveEventName, onTouchMove);
+            removeEventListener(elm, touchEndEventName, onTouchEnd);
+        }
     }
     
     function cancelEvent(e) {
@@ -342,7 +347,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         var config = scroller._meems_config,
             content = scroller.children[0],
             transitionRule = "";
-        
+
         if (config.scrollY) {
             transitionRule = "top " + finalYPosTime + "s " + config.timingFunction;
         }
@@ -354,32 +359,29 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             
             transitionRule += "left " + finalXPosTime + "s " + config.timingFunction;
         }
-        
-        Utils.postPone(function() {
-            var pX = (finalXPos !== undefined ? -finalXPos : undefined),
-                pY = (finalYPos !== undefined ? -finalYPos : undefined);
-            scroller._meems_handler.fire("scroll:end", pX, pY);
-        });
-        
+
         if (transitionRule.length > 0) {
             content.style[transitionName] = transitionRule;
             
-            Utils.postPone(function() {
+            window.requestAnimationFrame(function() {
                 var style = content.style;
                 var time = 0;
                 
                 if (finalYPos !== undefined) {
-                    style.top = finalYPos + "px";
+                    style.top = (typeof finalYPos === 'string' ? finalYPos : finalYPos + "px");
                     time = Math.max(time, finalYPosTime);
                 }
                 
                 if (finalXPos !== undefined) {
-                    style.left = finalXPos + "px";
+                    style.left = (typeof finalXPos === 'string' ? finalXPos : finalXPos + "px");
                     time = Math.max(time, finalXPosTime);
                 }
                 
                 if (time > 0) {                    
                     touchEndScrollbarAnimation(scroller, time);
+                    Utils.postPone(function() {
+                        scroller._meems_handler.fire("scroll:end", -(finalXPos || 0), -(finalYPos || 0));
+                    });
                 }
             });
         }
@@ -446,7 +448,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 lastFrame = start = (new Date()).getTime();
                 window.requestAnimationFrame(fadeOut);
             }
-        }
+        }        
         
         window.requestAnimationFrame(req);
     }
@@ -492,6 +494,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         config.bouncing = config.bouncing === false ? false : true;
         config.minDistanceOfDrag = config.minDistanceOfDrag || 500;
         config.axisLock = config.axisLock === false ? false : true;
+        config.disableTouchEvents = config.disableTouchEvents === true;
         
         registerHandlers(elm, config);
         
@@ -512,6 +515,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     Scroll.extend(Events.Handler, {
         update : function () {
             updateScrollbar(this._elm, this._elm.children[0]);
+        },
+        
+        destroy : function () {
+            removeHandlers(this._elm, this._meems_config);
         },
         
         scrollTo : function (x, y, duration) {
