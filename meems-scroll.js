@@ -564,8 +564,11 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     }
     
     Scroll.updateAll = function() {
+        var scroller;
         for (var i = 0, ln = activeScrollers.length; i < ln; ++i) {
-            activeScrollers[i].update();
+            scroller = activeScrollers[i];
+            scroller.update();
+            //scroller.scrollTo(scroller._elm._meems_content_size.left, scroller._elm._meems_content_size.top);
         }
     };
     
