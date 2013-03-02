@@ -1,4 +1,7 @@
+/*global define*/
 define(["meems-utils", "meems-events"], function (Utils, Events) {
+    "use strict";
+
     var touchStartEventName, touchEndEventName, touchMoveEventName,
         getCursorPosition,
         activeScrollers = [];
@@ -25,7 +28,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         };
     }
     
-    var transitionName = (function() {
+    var transitionName = (function () {
         var b = document.body || document.documentElement;
         var transitionNames = [ "transition", "MozTransition", "WebkitTransition", "OTransition"];
         for (var i = 0; i < transitionNames.length; ++i) {
@@ -39,20 +42,20 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     // requestAnimationFrame polyfill by Erik Möller
     // fixes from Paul Irish and Tino Zijdel
      
-    (function() {
+    (function () {
         var lastTime = 0;
         var vendors = ['ms', 'moz', 'webkit', 'o'];
-        for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-            window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
-            window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
-                                       || window[vendors[x]+'CancelRequestAnimationFrame'];
+        for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+            window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+            window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame']
+                                       || window[vendors[x] + 'CancelRequestAnimationFrame'];
         }
      
         if (!window.requestAnimationFrame) {
-            window.requestAnimationFrame = function(callback, element) {
+            window.requestAnimationFrame = function (callback, element) {
                 var currTime = new Date().getTime();
                 var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-                var id = window.setTimeout(function() { callback(currTime + timeToCall); },
+                var id = window.setTimeout(function () { callback(currTime + timeToCall); },
                   timeToCall);
                 lastTime = currTime + timeToCall;
                 return id;
@@ -60,13 +63,13 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
      
         if (!window.cancelAnimationFrame) {
-            window.cancelAnimationFrame = function(id) {
+            window.cancelAnimationFrame = function (id) {
                 clearTimeout(id);
             };
         }
     }());
     
-    var addEventListener = (function() {
+    var addEventListener = (function () {
         if (document.addEventListener) {
             return function (elm, eventName, fn) {
                 elm.addEventListener(eventName, fn, false);
@@ -82,7 +85,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
     }());
     
-    var removeEventListener = (function() {
+    var removeEventListener = (function () {
         if (document.removeEventListener) {
             return function (elm, eventName, fn) {
                 elm.removeEventListener(eventName, fn, false);
@@ -105,16 +108,16 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             addEventListener(elm, touchEndEventName, onTouchEnd);
         }
         
-        elm._meems_scroll = true;
-        elm._meems_config = config;
+        elm.$meems_scroll = true;
+        elm.$meems_config = config;
         
         elm.style.overflow = 'hidden';
-        elm._meems_content.style.position = 'absolute';
+        elm.$meems_content.style.position = 'absolute';
     }
     
-    function removeHandlers(elm, config) {        
-        delete elm._meems_scroll;
-        delete elm._meems_config;
+    function removeHandlers(elm, config) {
+        delete elm.$meems_scroll;
+        delete elm.$meems_config;
         
         if (!config.disableTouchEvents) {
             removeEventListener(elm, touchStartEventName, onTouchStart);
@@ -147,14 +150,14 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         var node = e.currentTarget;
         
-        while (node._meems_scroll === undefined && node.parentNode) {
+        while (node.$meems_scroll === undefined && node.parentNode) {
             node = node.parentNode;
         }
         
         return node;
     }
     
-    function calculateFinalPositionAndTime(config, fingerDownPos, fingerUpPos, currentPos, 
+    function calculateFinalPositionAndTime(config, fingerDownPos, fingerUpPos, currentPos,
                                             time, scrollerSize, contentSize) {
         var offsetY = fingerDownPos - fingerUpPos,
             speedY = offsetY / time,
@@ -189,7 +192,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
         
         // recalculate time
-        if (finalPos != newFinalPositionY) {
+        if (finalPos !== newFinalPositionY) {
             totalTime = totalTime * Math.abs((fingerDownPos - newFinalPositionY) / (fingerDownPos - finalPos));
             finalPos = newFinalPositionY;
         }
@@ -201,7 +204,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         return [finalPos, totalTime];
     }
     
-    var _scrollersDragging = 0; 
+    var $scrollersDragging = 0;
+
     function onTouchStart(e) {
         var scroller = getFirstParentScroller(e);
         
@@ -209,97 +213,97 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             return true;
         }
         
-        var content = scroller._meems_content;
-        scroller._meems_content_size = getObjectDimensions(content);
+        var content = scroller.$meems_content;
+        scroller.$meems_content_size = getObjectDimensions(content);
         
-        scroller._meems_old_pos = {
-            x: scroller._meems_content_size.left,
-            y: scroller._meems_content_size.top
+        scroller.$meems_old_pos = {
+            x: scroller.$meems_content_size.left,
+            y: scroller.$meems_content_size.top
         };
         
         content.style[transitionName] = "";
         
-        scroller._meems_dragging = true;
-        scroller._meems_dragging_start = (new Date()).getTime();
-        scroller._meems_cursor_pos = getCursorPosition(e);
-        scroller._meems_cursor_last_pos = scroller._meems_cursor_pos;
-        scroller._meems_scrolling_running_animation = false;
-        scroller._meems_drag_distance = 0;
-        scroller._meems_effective_drag_distance = 0;
-        scroller._meems_locked_axis = undefined;
+        scroller.$meems_dragging = true;
+        scroller.$meems_dragging_start = (new Date()).getTime();
+        scroller.$meems_cursor_pos = getCursorPosition(e);
+        scroller.$meems_cursor_last_pos = scroller.$meems_cursor_pos;
+        scroller.$meems_scrolling_running_animation = false;
+        scroller.$meems_drag_distance = 0;
+        scroller.$meems_effective_drag_distance = 0;
+        scroller.$meems_locked_axis = undefined;
         
-        ++_scrollersDragging;
+        ++$scrollersDragging;
         //return cancelEvent(e);
     }
     
     function onTouchMove(e) {
-        if (_scrollersDragging <= 0) {
+        if ($scrollersDragging <= 0) {
             return true;
         }
         
         var scroller = getFirstParentScroller(e);
-        if (!scroller || !scroller._meems_dragging) {
+        if (!scroller || !scroller.$meems_dragging) {
             return true;
-        }    
+        }
                 
-        var config = scroller._meems_config,
+        var config = scroller.$meems_config,
             newPos = getCursorPosition(e),
-            offsetX = scroller._meems_cursor_pos.x - newPos.x,
-            offsetY = scroller._meems_cursor_pos.y - newPos.y;
+            offsetX = scroller.$meems_cursor_pos.x - newPos.x,
+            offsetY = scroller.$meems_cursor_pos.y - newPos.y;
             
-        if (scroller._meems_drag_distance < config.minDistanceOfDrag) {
-            scroller._meems_drag_distance += offsetX * offsetX + offsetY * offsetY;
+        if (scroller.$meems_drag_distance < config.minDistanceOfDrag) {
+            scroller.$meems_drag_distance += offsetX * offsetX + offsetY * offsetY;
             if (e.preventDefault) {
                 e.preventDefault();
             }
             return true;
-        } else if (config.axisLock && scroller._meems_locked_axis === undefined) {
-            scroller._meems_locked_axis = (offsetX * offsetX > offsetY * offsetY ? 'x' : 'y');
+        } else if (config.axisLock && scroller.$meems_locked_axis === undefined) {
+            scroller.$meems_locked_axis = (offsetX * offsetX > offsetY * offsetY ? 'x' : 'y');
         }
         
-        var content = scroller._meems_content,
+        var content = scroller.$meems_content,
             //style = content.style,
             posX, posY;
         
-        if (config.scrollX && (scroller._meems_locked_axis === 'x' || scroller._meems_locked_axis === undefined)) {
-            posX = scroller._meems_old_pos.x - offsetX;
+        if (config.scrollX && (scroller.$meems_locked_axis === 'x' || scroller.$meems_locked_axis === undefined)) {
+            posX = scroller.$meems_old_pos.x - offsetX;
             
             if (!config.bouncing) {
                 if (posX > 0) {
                     posX = 0;
-                } else if (posX < -scroller._meems_content_size.width + scroller._meems_elm_size.width) {
-                    posX = -scroller._meems_content_size.width + scroller._meems_elm_size.width;
+                } else if (posX < -scroller.$meems_content_size.width + scroller.$meems$elm_size.width) {
+                    posX = -scroller.$meems_content_size.width + scroller.$meems$elm_size.width;
                 }
             }
             
-            scroller._meems_effective_drag_distance += offsetX * offsetX;
+            scroller.$meems_effective_drag_distance += offsetX * offsetX;
             //style.left = posX + "px";
             if (!config.hideScroller) {
-                scroller._meems_scrollbar_x.style.display = 'block';
+                scroller.$meems_scrollbar_x.style.display = 'block';
             }
         }
         
-        if (config.scrollY && (scroller._meems_locked_axis === 'y' || scroller._meems_locked_axis === undefined)) {
-            posY = scroller._meems_old_pos.y - offsetY;
+        if (config.scrollY && (scroller.$meems_locked_axis === 'y' || scroller.$meems_locked_axis === undefined)) {
+            posY = scroller.$meems_old_pos.y - offsetY;
             
             if (!config.bouncing) {
                 if (posY > 0) {
                     posY = 0;
-                } else if (posY < -scroller._meems_content_size.height + scroller._meems_elm_size.height) {
-                    posY = -scroller._meems_content_size.height + scroller._meems_elm_size.height;
+                } else if (posY < -scroller.$meems_content_size.height + scroller.$meems$elm_size.height) {
+                    posY = -scroller.$meems_content_size.height + scroller.$meems$elm_size.height;
                 }
             }
             
-            scroller._meems_effective_drag_distance += offsetY * offsetY;
+            scroller.$meems_effective_drag_distance += offsetY * offsetY;
             //style.top = posY + "px";
             if (!config.hideScroller) {
-                scroller._meems_scrollbar_y.style.display = 'block';
+                scroller.$meems_scrollbar_y.style.display = 'block';
             }
         }
         
         setContentPos(scroller, posX, posY);
         
-        scroller._meems_cursor_last_pos = newPos;
+        scroller.$meems_cursor_last_pos = newPos;
         updateScrollbar(scroller, content);
         
         if (e.preventDefault) {
@@ -309,32 +313,32 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         return true;
     }
     
-    function onTouchEnd(e) {        
+    function onTouchEnd(e) {
         var scroller = getFirstParentScroller(e);
-        if (!scroller || !scroller._meems_dragging) {
+        if (!scroller || !scroller.$meems_dragging) {
             return true;
-        } 
+        }
         
-        --_scrollersDragging;
-        scroller._meems_dragging = false;
+        --$scrollersDragging;
+        scroller.$meems_dragging = false;
         
-        var config = scroller._meems_config;
+        var config = scroller.$meems_config;
         
-        if (scroller._meems_effective_drag_distance < config.minDistanceOfDrag) {
+        if (scroller.$meems_effective_drag_distance < config.minDistanceOfDrag) {
             return true;
         }
             
-        var newPos = scroller._meems_cursor_last_pos,
-            time = ((new Date()).getTime() - scroller._meems_dragging_start) / 1000.0;
+        var newPos = scroller.$meems_cursor_last_pos,
+            time = ((new Date()).getTime() - scroller.$meems_dragging_start) / 1000.0;
         
         var finalY, finalYPos, finalYPosTime,
             finalX, finalXPos, finalXPosTime;
         
         if (config.scrollY) {
-            var scrollerHeight = scroller._meems_elm_size.height,
-                contentHeight = scroller._meems_content_size.height;
+            var scrollerHeight = scroller.$meems$elm_size.height,
+                contentHeight = scroller.$meems_content_size.height;
             
-            finalY = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.y, newPos.y, scroller._meems_old_pos.y, time, scrollerHeight, contentHeight);
+            finalY = calculateFinalPositionAndTime(config, scroller.$meems_cursor_pos.y, newPos.y, scroller.$meems_old_pos.y, time, scrollerHeight, contentHeight);
             
             finalYPos = finalY[0];
             finalYPosTime = finalY[1];
@@ -342,10 +346,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
         
         if (config.scrollX) {
-            var scrollerWidth = scroller._meems_elm_size.width,
-                contentWidth = scroller._meems_content_size.width;
+            var scrollerWidth = scroller.$meems$elm_size.width,
+                contentWidth = scroller.$meems_content_size.width;
             
-            finalX = calculateFinalPositionAndTime(config, scroller._meems_cursor_pos.x, newPos.x, scroller._meems_old_pos.x, time, scrollerWidth, contentWidth);
+            finalX = calculateFinalPositionAndTime(config, scroller.$meems_cursor_pos.x, newPos.x, scroller.$meems_old_pos.x, time, scrollerWidth, contentWidth);
             finalXPos = finalX[0];
             finalXPosTime = finalX[1];
             finalX = null;
@@ -357,15 +361,15 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     }
     
     function scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime) {
-        var config = scroller._meems_config,
-            content = scroller._meems_content,
+        var config = scroller.$meems_config,
+            content = scroller.$meems_content,
             transitionRule = "";
 
         if (config.scrollY) {
             transitionRule = "top " + finalYPosTime + "s " + config.timingFunction;
         }
         
-        if (config.scrollX) {            
+        if (config.scrollX) {
             if (config.scrollY) {
                 transitionRule  += ", ";
             }
@@ -376,7 +380,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         if (transitionRule.length > 0) {
             content.style[transitionName] = transitionRule;
             
-            window.requestAnimationFrame(function() {
+            window.requestAnimationFrame(function () {
                 //var style = content.style;
                 var time = 0;
                 
@@ -392,63 +396,75 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 
                 setContentPos(scroller, finalXPos, finalYPos);
                 
-                if (time > 0) {                    
+                if (time > 0) {
                     touchEndScrollbarAnimation(scroller, time);
-                    Utils.postPone(function() {
-                        scroller._meems_handler.fire("scroll:end", -(finalXPos || 0), -(finalYPos || 0));
+                    Utils.postPone(function () {
+                        scroller.$meems_handler.fire("scroll:end", -(finalXPos || 0), -(finalYPos || 0));
                     });
                 }
             });
         }
     }
     
-    function createVerticalScrollBar(elm, config) {   
+    function createVerticalScrollBar(elm, config) {
         if (config.hideScroller) {
             return;
         }
-        elm._meems_scrollbar_y = document.createElement("div");
-        elm._meems_scrollbar_y.className = "ui-scroll-bar-y";
-        elm._meems_scrollbar_y.style.position = "absolute";
-        elm.appendChild(elm._meems_scrollbar_y);
+        elm.$meems_scrollbar_y = document.createElement("div");
+        elm.$meems_scrollbar_y.className = "ui-scroll-bar-y";
+        elm.$meems_scrollbar_y.style.position = "absolute";
+        elm.appendChild(elm.$meems_scrollbar_y);
     }
     
     function createHorizontalScrollBar(elm, config) {
         if (config.hideScroller) {
             return;
         }
-        elm._meems_scrollbar_x = document.createElement("div");
-        elm._meems_scrollbar_x.className = "ui-scroll-bar-x";
-        elm._meems_scrollbar_x.style.position = "absolute";
-        elm.appendChild(elm._meems_scrollbar_x);
+        elm.$meems_scrollbar_x = document.createElement("div");
+        elm.$meems_scrollbar_x.className = "ui-scroll-bar-x";
+        elm.$meems_scrollbar_x.style.position = "absolute";
+        elm.appendChild(elm.$meems_scrollbar_x);
     }
     
-    function touchEndScrollbarAnimation(scroller, totalTime) {               
-        var content = scroller._meems_content,
-            scrollbarX = scroller._meems_scrollbar_x,
-            scrollbarY = scroller._meems_scrollbar_y,
+    function touchEndScrollbarAnimation(scroller, totalTime) {
+        var content = scroller.$meems_content,
+            scrollbarX = scroller.$meems_scrollbar_x,
+            scrollbarY = scroller.$meems_scrollbar_y,
             totalMs = totalTime * 1000.0,
             start = (new Date()).getTime(), lastFrame,
-            fadeOutDuration = scroller._meems_config.fadeOutDuration * 1000.0,
+            fadeOutDuration = scroller.$meems_config.fadeOutDuration * 1000.0,
             startOp, op,
             interval;
         
-        scroller._meems_scrolling_running_animation = true;
+        scroller.$meems_scrolling_running_animation = true;
 
-        function fadeOut() {            
+        function fadeOut() {
             var timestamp = (new Date()).getTime();
             op -= interval * (timestamp - lastFrame);
 
-            scrollbarX && (scrollbarX.style.opacity = op);
-            scrollbarY && (scrollbarY.style.opacity = op);
+            if (scrollbarX) {
+                scrollbarX.style.opacity = op;
+            }
             
-            if (scroller._meems_scrolling_running_animation && timestamp - start < fadeOutDuration) {
+            if (scrollbarY) {
+                scrollbarY.style.opacity = op;
+            }
+            
+            if (scroller.$meems_scrolling_running_animation && timestamp - start < fadeOutDuration) {
                 lastFrame = timestamp;
                 window.requestAnimationFrame(fadeOut);
             } else {
-                scrollbarX && (scrollbarX.style.display = 'none') && (scrollbarX.style.opacity = startOp);
-                scrollbarY && (scrollbarY.style.display = 'none') && (scrollbarY.style.opacity = startOp);
+                if (scrollbarX) {
+                    scrollbarX.style.display = 'none';
+                    scrollbarX.style.opacity = startOp;
+                }
+
+                if (scrollbarY) {
+                    scrollbarY.style.display = 'none';
+                    scrollbarY.style.opacity = startOp;
+                }
                 
-                scroller._meems_scrolling_running_animation = false;
+                scroller.$meems_scrolling_running_animation = false;
             }
         }
         
@@ -457,33 +473,33 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             
             updateScrollbar(scroller, content);
             
-            if (scroller._meems_scrolling_running_animation && timestamp - start < totalMs) {
+            if (scroller.$meems_scrolling_running_animation && timestamp - start < totalMs) {
                 window.requestAnimationFrame(req);
             } else {
-                startOp = 
-                     (scrollbarX && document.defaultView.getComputedStyle(scrollbarX, null).opacity) || 
+                startOp =
+                     (scrollbarX && document.defaultView.getComputedStyle(scrollbarX, null).opacity) ||
                      (scrollbarY && document.defaultView.getComputedStyle(scrollbarY, null).opacity) || 1.0;
                 op = startOp * 1.0;
                 interval = startOp / fadeOutDuration;
                 lastFrame = start = (new Date()).getTime();
                 window.requestAnimationFrame(fadeOut);
             }
-        }        
+        }
         
         window.requestAnimationFrame(req);
     }
     
     function updateScrollbar(scroller, content) {
-        var config = scroller._meems_config;
+        var config = scroller.$meems_config;
         
         if (config.hideScroller) {
             return;
         }
         
         if (config.scrollY) {
-            var scrollbarY = scroller._meems_scrollbar_y,
-                scrollerHeight = scroller._meems_elm_size.height * 1.0,
-                contentHeight = scroller._meems_content_size.height,
+            var scrollbarY = scroller.$meems_scrollbar_y,
+                scrollerHeight = scroller.$meems$elm_size.height * 1.0,
+                contentHeight = scroller.$meems_content_size.height,
                 verticalBarH = (Math.min(scrollerHeight, contentHeight) / contentHeight) * scrollerHeight,
                 verticalBarY = (-content.offsetTop / contentHeight) * scrollerHeight;
             
@@ -492,9 +508,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
         
         if (config.scrollX) {
-            var scrollbarX = scroller._meems_scrollbar_x,
-                scrollerWidth = scroller._meems_elm_size.width,
-                contentWidth = scroller._meems_content_size.width,
+            var scrollbarX = scroller.$meems_scrollbar_x,
+                scrollerWidth = scroller.$meems$elm_size.width,
+                contentWidth = scroller.$meems_content_size.width,
                 verticalBarW = (Math.min(scrollerWidth, contentWidth) / contentWidth) * scrollerWidth,
                 verticalBarX = (-content.offsetLeft / contentWidth) * scrollerWidth;
             
@@ -505,23 +521,23 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     
     var setContentPos = function (scroller, left, top) {
         if (typeof(left) === 'number') {
-            scroller._meems_content.style.left = left + "px";
-            scroller._meems_content_size.left = left;
+            scroller.$meems_content.style.left = left + "px";
+            scroller.$meems_content_size.left = left;
         }
         
         if (typeof(top) === 'number') {
-            scroller._meems_content.style.top = top + "px";
-            scroller._meems_content_size.top = top;
+            scroller.$meems_content.style.top = top + "px";
+            scroller.$meems_content_size.top = top;
         }
     };
     
     var getObjectDimensions = function (el) {
-            return {
-                left: el.offsetLeft,
-                top: el.offsetTop,
-                width: el.offsetWidth,
-                height: el.offsetHeight
-            };
+        return {
+            left: el.offsetLeft,
+            top: el.offsetTop,
+            width: el.offsetWidth,
+            height: el.offsetHeight
+        };
     };
 
     function Scroll(elm, config) {
@@ -542,7 +558,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         config.disableTouchEvents = config.disableTouchEvents === true;
         config.hideScroller = config.hideScroller === true;
         
-        elm._meems_content = elm.children[0];
+        elm.$meems_content = elm.children[0];
         registerHandlers(elm, config);
         
         if (config.scrollY) {
@@ -553,51 +569,51 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             createHorizontalScrollBar(elm, config);
         }
         
-        this._elm = elm;
-        this._elm._meems_handler = this;
-        this._elm._meems_elm_size = getObjectDimensions(this._elm);
-        this._elm._meems_content_size = getObjectDimensions(this._elm._meems_content);
+        this.$elm = elm;
+        this.$elm.$meems_handler = this;
+        this.$elm.$meems$elm_size = getObjectDimensions(this.$elm);
+        this.$elm.$meems_content_size = getObjectDimensions(this.$elm.$meems_content);
         
         activeScrollers.push(this);
         
         return this;
     }
     
-    Scroll.updateAll = function() {
+    Scroll.updateAll = function () {
         var scroller;
         for (var i = 0, ln = activeScrollers.length; i < ln; ++i) {
             scroller = activeScrollers[i];
             scroller.update();
-            //scroller.scrollTo(scroller._elm._meems_content_size.left, scroller._elm._meems_content_size.top);
+            //scroller.scrollTo(scroller.$elm.$meems_content_size.left, scroller.$elm.$meems_content_size.top);
         }
     };
     
     Scroll.extend(Events.Handler, {
         update : function () {
-            this._elm._meems_elm_size = getObjectDimensions(this._elm);
-            this._elm._meems_content_size = getObjectDimensions(this._elm._meems_content);
-            updateScrollbar(this._elm, this._elm._meems_content);
+            this.$elm.$meems$elm_size = getObjectDimensions(this.$elm);
+            this.$elm.$meems_content_size = getObjectDimensions(this.$elm.$meems_content);
+            updateScrollbar(this.$elm, this.$elm.$meems_content);
         },
         
         destroy : function () {
             activeScrollers.splice(activeScrollers.indexOf(this), 0);
-            removeHandlers(this._elm, this._meems_config);
+            removeHandlers(this.$elm, this.$meems_config);
         },
         
         scrollTo : function (x, y, duration) {
             duration = duration || 0.25;
             
-            if (!this._elm._meems_config.hideScroller) {
-                if (this._elm._meems_config.scrollY) {
-                    this._elm._meems_scrollbar_y.style.display = 'block';
+            if (!this.$elm.$meems_config.hideScroller) {
+                if (this.$elm.$meems_config.scrollY) {
+                    this.$elm.$meems_scrollbar_y.style.display = 'block';
                 }
                 
-                if (this._elm._meems_config.scrollX) {
-                    this._elm._meems_scrollbar_x.style.display = 'block';
+                if (this.$elm.$meems_config.scrollX) {
+                    this.$elm.$meems_scrollbar_x.style.display = 'block';
                 }
             }
             
-            scrollAux(this._elm, -x, duration, -y, duration);
+            scrollAux(this.$elm, -x, duration, -y, duration);
         }
     });
     
