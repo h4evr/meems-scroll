@@ -2,32 +2,8 @@
 define(["meems-utils", "meems-events"], function (Utils, Events) {
     "use strict";
 
-    var touchStartEventName, touchEndEventName, touchMoveEventName,
-        getCursorPosition,
-        activeScrollers = [];
-    
-    if ('ontouchstart' in window) {
-        touchStartEventName = 'touchstart';
-        touchMoveEventName = 'touchmove';
-        touchEndEventName = 'touchend';
-        getCursorPosition = function (e) {
-            return {
-                x : e.touches[0].pageX,
-                y : e.touches[0].pageY
-            };
-        };
-    } else {
-        touchStartEventName = 'mousedown';
-        touchMoveEventName = 'mousemove';
-        touchEndEventName = 'mouseup';
-        getCursorPosition = function (e) {
-            return {
-                x : e.pageX,
-                y : e.pageY
-            };
-        };
-    }
-    
+    var activeScrollers = [];
+
     var transitionName = (function () {
         var b = document.body || document.documentElement;
         var transitionNames = [ "transition", "MozTransition", "WebkitTransition", "OTransition"];
@@ -52,7 +28,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
      
         if (!window.requestAnimationFrame) {
-            window.requestAnimationFrame = function (callback, element) {
+            window.requestAnimationFrame = function (callback/*, element*/) {
                 var currTime = new Date().getTime();
                 var timeToCall = Math.max(0, 16 - (currTime - lastTime));
                 var id = window.setTimeout(function () { callback(currTime + timeToCall); },
@@ -95,7 +71,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 elm.detachEvent('on' + eventName, fn);
             };
         } else {
-            return function (elm, eventName, fn) {
+            return function (elm, eventName) {
                 elm['on' + eventName] = null;
             };
         }
@@ -103,9 +79,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
     function registerHandlers(elm, config) {
         if (!config.disableTouchEvents) {
-            addEventListener(elm, touchStartEventName, onTouchStart);
-            addEventListener(elm, touchMoveEventName, onTouchMove);
-            addEventListener(elm, touchEndEventName, onTouchEnd);
+            addEventListener(elm, Events.touchStartEventName, onTouchStart);
+            addEventListener(elm, Events.touchMoveEventName, onTouchMove);
+            addEventListener(elm, Events.touchEndEventName, onTouchEnd);
         }
         
         elm.$meems_scroll = true;
@@ -120,26 +96,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         delete elm.$meems_config;
         
         if (!config.disableTouchEvents) {
-            removeEventListener(elm, touchStartEventName, onTouchStart);
-            removeEventListener(elm, touchMoveEventName, onTouchMove);
-            removeEventListener(elm, touchEndEventName, onTouchEnd);
+            removeEventListener(elm, Events.touchStartEventName, onTouchStart);
+            removeEventListener(elm, Events.touchMoveEventName, onTouchMove);
+            removeEventListener(elm, Events.touchEndEventName, onTouchEnd);
         }
-    }
-    
-    function cancelEvent(e) {
-        if (e.preventDefault) {
-            e.preventDefault();
-        }
-        
-        if (e.cancelBubble !== undefined) {
-            e.cancelBubble = true;
-        }
-        
-        if (e.returnValue !== undefined) {
-            e.returnValue = false;
-        }
-        
-        return false;
     }
     
     function getFirstParentScroller(e) {
@@ -225,7 +185,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         scroller.$meems_dragging = true;
         scroller.$meems_dragging_start = (new Date()).getTime();
-        scroller.$meems_cursor_pos = getCursorPosition(e);
+        scroller.$meems_cursor_pos = Events.getCursorPosition(e);
         scroller.$meems_cursor_last_pos = scroller.$meems_cursor_pos;
         scroller.$meems_scrolling_running_animation = false;
         scroller.$meems_drag_distance = 0;
@@ -233,6 +193,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         scroller.$meems_locked_axis = undefined;
         
         ++$scrollersDragging;
+
+        return true;
         //return cancelEvent(e);
     }
     
@@ -247,7 +209,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
                 
         var config = scroller.$meems_config,
-            newPos = getCursorPosition(e),
+            newPos = Events.getCursorPosition(e),
             offsetX = scroller.$meems_cursor_pos.x - newPos.x,
             offsetY = scroller.$meems_cursor_pos.y - newPos.y;
             
@@ -356,7 +318,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
         
         scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime);
-        
+
+        return true;
         //return cancelEvent(e);
     }
     
@@ -479,7 +442,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 startOp =
                      (scrollbarX && document.defaultView.getComputedStyle(scrollbarX, null).opacity) ||
                      (scrollbarY && document.defaultView.getComputedStyle(scrollbarY, null).opacity) || 1.0;
-                op = startOp * 1.0;
+                op = startOp;
                 interval = startOp / fadeOutDuration;
                 lastFrame = start = (new Date()).getTime();
                 window.requestAnimationFrame(fadeOut);
@@ -498,7 +461,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         if (config.scrollY) {
             var scrollbarY = scroller.$meems_scrollbar_y,
-                scrollerHeight = scroller.$meems$elm_size.height * 1.0,
+                scrollerHeight = scroller.$meems$elm_size.height,
                 contentHeight = scroller.$meems_content_size.height,
                 verticalBarH = (Math.min(scrollerHeight, contentHeight) / contentHeight) * scrollerHeight,
                 verticalBarY = (-content.offsetTop / contentHeight) * scrollerHeight;
@@ -548,13 +511,14 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         config.totalMaxTime = config.totalMaxTime || 1;
         config.totalMaxTimesnap = config.totalMaxTimesnap || 0;
         config.paging = config.paging === true;
-        config.scrollY = config.scrollY === false ? false : true;
+        config.snap = config.snap === true;
+        config.scrollY = config.scrollY !== false;
         config.scrollX =  config.scrollX === true;
         config.timingFunction = config.timingFunction || "ease-out";
         config.fadeOutDuration = config.fadeOutDuration || 1;
-        config.bouncing = config.bouncing === false ? false : true;
+        config.bouncing = config.bouncing !== false;
         config.minDistanceOfDrag = config.minDistanceOfDrag || 500;
-        config.axisLock = config.axisLock === false ? false : true;
+        config.axisLock = config.axisLock !== false;
         config.disableTouchEvents = config.disableTouchEvents === true;
         config.hideScroller = config.hideScroller === true;
         
