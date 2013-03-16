@@ -1,4 +1,10 @@
 /*global define*/
+/**
+ * Emulates scrolling on a set of components, with scrollbars, as if on a mobile environment.
+ * @module meems-scroll
+ * @requires meems-utils
+ * @requires meems-events
+ */
 define(["meems-utils", "meems-events"], function (Utils, Events) {
     "use strict";
 
@@ -79,9 +85,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
     function registerHandlers(elm, config) {
         if (!config.disableTouchEvents) {
-            addEventListener(elm, Events.touchStartEventName, onTouchStart);
-            addEventListener(elm, Events.touchMoveEventName, onTouchMove);
-            addEventListener(elm, Events.touchEndEventName, onTouchEnd);
+            addEventListener(elm, Events.Touch.touchStartEventName, onTouchStart);
+            addEventListener(elm, Events.Touch.touchMoveEventName, onTouchMove);
+            addEventListener(elm, Events.Touch.touchEndEventName, onTouchEnd);
         }
         
         elm.$meems_scroll = true;
@@ -96,9 +102,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         delete elm.$meems_config;
         
         if (!config.disableTouchEvents) {
-            removeEventListener(elm, Events.touchStartEventName, onTouchStart);
-            removeEventListener(elm, Events.touchMoveEventName, onTouchMove);
-            removeEventListener(elm, Events.touchEndEventName, onTouchEnd);
+            removeEventListener(elm, Events.Touch.touchStartEventName, onTouchStart);
+            removeEventListener(elm, Events.Touch.touchMoveEventName, onTouchMove);
+            removeEventListener(elm, Events.Touch.touchEndEventName, onTouchEnd);
         }
     }
     
@@ -185,7 +191,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         scroller.$meems_dragging = true;
         scroller.$meems_dragging_start = (new Date()).getTime();
-        scroller.$meems_cursor_pos = Events.getCursorPosition(e);
+        scroller.$meems_cursor_pos = Events.Touch.getCursorPosition(e);
         scroller.$meems_cursor_last_pos = scroller.$meems_cursor_pos;
         scroller.$meems_scrolling_running_animation = false;
         scroller.$meems_drag_distance = 0;
@@ -209,7 +215,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
                 
         var config = scroller.$meems_config,
-            newPos = Events.getCursorPosition(e),
+            newPos = Events.Touch.getCursorPosition(e),
             offsetX = scroller.$meems_cursor_pos.x - newPos.x,
             offsetY = scroller.$meems_cursor_pos.y - newPos.y;
             
@@ -320,7 +326,6 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime);
 
         return true;
-        //return cancelEvent(e);
     }
     
     function scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime) {
@@ -361,7 +366,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 
                 if (time > 0) {
                     touchEndScrollbarAnimation(scroller, time);
-                    Utils.postPone(function () {
+                    Utils.Fn.postPone(function () {
                         scroller.$meems_handler.fire("scroll:end", -(finalXPos || 0), -(finalYPos || 0));
                     });
                 }
@@ -503,6 +508,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         };
     };
 
+    /**
+     * @class Scroll
+     * @constructor
+     */
     function Scroll(elm, config) {
         Events.Handler.apply(this, arguments); // super
         
@@ -542,7 +551,12 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         return this;
     }
-    
+
+    /**
+     * Updates all scroller that were ever created and are still active.
+     * @method updateAll
+     * @static
+     */
     Scroll.updateAll = function () {
         var scroller;
         for (var i = 0, ln = activeScrollers.length; i < ln; ++i) {
@@ -553,17 +567,35 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     };
     
     Scroll.extend(Events.Handler, {
+        /**
+         * Update the size of the scroller, should be called after a layout change.
+         *
+         * @method update
+         */
         update : function () {
             this.$elm.$meems$elm_size = getObjectDimensions(this.$elm);
             this.$elm.$meems_content_size = getObjectDimensions(this.$elm.$meems_content);
             updateScrollbar(this.$elm, this.$elm.$meems_content);
         },
-        
+
+        /**
+         * Destroy this scroller instance.
+         *
+         * @method destroy
+         */
         destroy : function () {
             activeScrollers.splice(activeScrollers.indexOf(this), 0);
             removeHandlers(this.$elm, this.$meems_config);
         },
-        
+
+        /**
+         * Scroll to the given position, with animation.
+         *
+         * @method scrollTo
+         * @param {Number} x What x coordinate should be at the left-top corner after scrolling.
+         * @param {Number} [y] What y coordinate should be at the left-top corner after scrolling.
+         * @param {Number} [duration] How long the animation should last.
+         */
         scrollTo : function (x, y, duration) {
             duration = duration || 0.25;
             
