@@ -1,6 +1,6 @@
 /*global define*/
 /**
- * Emulates scrolling on a set of components, with scrollbars, as if on a mobile environment.
+ * Emulates scrolling on a set of components, with scroll-bars, as if on a mobile environment.
  * @module meems-scroll
  * @requires meems-utils
  * @requires meems-events
@@ -50,44 +50,12 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             };
         }
     }());
-    
-    var addEventListener = (function () {
-        if (document.addEventListener) {
-            return function (elm, eventName, fn) {
-                elm.addEventListener(eventName, fn, false);
-            };
-        } else if (document.attachEvent) {
-            return function (elm, eventName, fn) {
-                elm.attachEvent('on' + eventName, fn);
-            };
-        } else {
-            return function (elm, eventName, fn) {
-                elm['on' + eventName] = fn;
-            };
-        }
-    }());
-    
-    var removeEventListener = (function () {
-        if (document.removeEventListener) {
-            return function (elm, eventName, fn) {
-                elm.removeEventListener(eventName, fn, false);
-            };
-        } else if (document.detachEvent) {
-            return function (elm, eventName, fn) {
-                elm.detachEvent('on' + eventName, fn);
-            };
-        } else {
-            return function (elm, eventName) {
-                elm['on' + eventName] = null;
-            };
-        }
-    }());
         
     function registerHandlers(elm, config) {
         if (!config.disableTouchEvents) {
-            addEventListener(elm, Events.Touch.touchStartEventName, onTouchStart);
-            addEventListener(elm, Events.Touch.touchMoveEventName, onTouchMove);
-            addEventListener(elm, Events.Touch.touchEndEventName, onTouchEnd);
+            Events.Dom.on(elm, Events.Touch.touchStartEventName, onTouchStart);
+            Events.Dom.on(elm, Events.Touch.touchMoveEventName, onTouchMove);
+            Events.Dom.on(elm, Events.Touch.touchEndEventName, onTouchEnd);
         }
         
         elm.$meems_scroll = true;
@@ -102,9 +70,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         delete elm.$meems_config;
         
         if (!config.disableTouchEvents) {
-            removeEventListener(elm, Events.Touch.touchStartEventName, onTouchStart);
-            removeEventListener(elm, Events.Touch.touchMoveEventName, onTouchMove);
-            removeEventListener(elm, Events.Touch.touchEndEventName, onTouchEnd);
+            Events.Dom.off(elm, Events.Touch.touchStartEventName, onTouchStart);
+            Events.Dom.off(elm, Events.Touch.touchMoveEventName, onTouchMove);
+            Events.Dom.off(elm, Events.Touch.touchEndEventName, onTouchEnd);
         }
     }
     
@@ -114,7 +82,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             return null;
         } */
         
-        var node = e.currentTarget;
+        var node = e.target;
         
         while (node.$meems_scroll === undefined && node.parentNode) {
             node = node.parentNode;
@@ -228,6 +196,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         } else if (config.axisLock && scroller.$meems_locked_axis === undefined) {
             scroller.$meems_locked_axis = (offsetX * offsetX > offsetY * offsetY ? 'x' : 'y');
         }
+
+        Events.Dom.takeOver(scroller, Events.Touch.touchEndEventName, onTouchEnd);
         
         var content = scroller.$meems_content,
             //style = content.style,
@@ -277,7 +247,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         if (e.preventDefault) {
             e.preventDefault();
         }
-        
+
         return true;
     }
     
