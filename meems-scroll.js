@@ -83,6 +83,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         } */
         
         var node = e.target;
+
+        if (node.className.indexOf("meems-scroll-skip") > -1) {
+            return null;
+        }
         
         while (node.$meems_scroll === undefined && node.parentNode) {
             node = node.parentNode;
@@ -197,8 +201,6 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             scroller.$meems_locked_axis = (offsetX * offsetX > offsetY * offsetY ? 'x' : 'y');
         }
 
-        Events.Dom.takeOver(scroller, Events.Touch.touchEndEventName, onTouchEnd);
-        
         var content = scroller.$meems_content,
             //style = content.style,
             posX, posY;
@@ -295,7 +297,19 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime);
 
-        return true;
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        if (e.cancelBubble !== undefined) {
+            e.cancelBubble = true;
+        }
+
+        return false;
     }
     
     function scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime) {
@@ -486,7 +500,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         Events.Handler.apply(this, arguments); // super
         
         config = config || {};
-        config.friction = config.friction || 1000.0;
+        config.friction = config.friction || 100.0;
         config.totalMaxTime = config.totalMaxTime || 1;
         config.totalMaxTimesnap = config.totalMaxTimesnap || 0;
         config.paging = config.paging === true;
@@ -496,7 +510,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         config.timingFunction = config.timingFunction || "ease-out";
         config.fadeOutDuration = config.fadeOutDuration || 1;
         config.bouncing = config.bouncing !== false;
-        config.minDistanceOfDrag = config.minDistanceOfDrag || 500;
+        config.minDistanceOfDrag = config.minDistanceOfDrag || 10;
         config.axisLock = config.axisLock !== false;
         config.disableTouchEvents = config.disableTouchEvents === true;
         config.hideScroller = config.hideScroller === true;
