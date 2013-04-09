@@ -143,24 +143,33 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     }
     
     var $scrollersDragging = 0;
+    var $mouseIsDown = false;
+
+    function onDocumentTouchStart() {
+        $mouseIsDown = true;
+    }
+
+    function onDocumentTouchEnd() {
+        $mouseIsDown = false;
+    }
 
     function onTouchStart(e) {
         var scroller = getFirstParentScroller(e);
-        
+
         if (!scroller) {
             return true;
         }
-        
+
         var content = scroller.$meems_content;
         scroller.$meems_content_size = getObjectDimensions(content);
-        
+
         scroller.$meems_old_pos = {
             x: scroller.$meems_content_size.left,
             y: scroller.$meems_content_size.top
         };
-        
+
         content.style[transitionName] = "";
-        
+
         scroller.$meems_dragging = true;
         scroller.$meems_dragging_start = (new Date()).getTime();
         scroller.$meems_cursor_pos = Events.Touch.getCursorPosition(e);
@@ -169,20 +178,65 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         scroller.$meems_drag_distance = 0;
         scroller.$meems_effective_drag_distance = 0;
         scroller.$meems_locked_axis = undefined;
-        
+
         ++$scrollersDragging;
 
         return true;
         //return cancelEvent(e);
     }
-    
+
+    function scrollUpOrDownAccordingToEvent(e) {
+        if (!$mouseIsDown) {
+            return;
+        }
+
+        var scroller = getFirstParentScroller(e);
+        if (!scroller) {
+            return;
+        }
+
+        var content = scroller.$meems_content;
+        scroller.$meems_content_size = getObjectDimensions(content);
+
+        var pos = Events.Touch.getCursorPosition(e),
+            config = scroller.$meems_config,
+            scrollerPosition = Utils.Dom.getPosition(scroller),
+            scrollerHeight = scroller.$meems$elm_size.height,
+            contentHeight = scroller.$meems_content_size.height;
+
+        if (config.scrollY) {
+            var dir = 0;
+
+            if (pos.y - scrollerPosition.y <= 100) {
+                dir = 50;
+            } else if (scrollerPosition.y + scrollerHeight - pos.y <= 100) {
+                dir = -50;
+            }
+
+            if (dir !== 0) {
+                var finalY = calculateFinalPositionAndTime({
+                        paging: false,
+                        snap: false,
+                        totalMaxTime: 0.50,
+                        friction: config.friction
+                    }, 0, dir, scroller.$meems_content_size.top, 0.50, scrollerHeight, contentHeight),
+                    finalYPos = finalY[0],
+                    finalYPosTime = finalY[1];
+
+                scrollAux(scroller, null, null, finalYPos, finalYPosTime);
+            }
+        }
+    }
+
     function onTouchMove(e) {
-        if ($scrollersDragging <= 0) {
+        if (!$mouseIsDown || $scrollersDragging <= 0) {
+            scrollUpOrDownAccordingToEvent(e);
             return true;
         }
         
         var scroller = getFirstParentScroller(e);
         if (!scroller || !scroller.$meems_dragging) {
+            scrollUpOrDownAccordingToEvent(e);
             return true;
         }
                 
@@ -254,6 +308,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     }
     
     function onTouchEnd(e) {
+        $mouseIsDown = false;
+
         var scroller = getFirstParentScroller(e);
         if (!scroller || !scroller.$meems_dragging) {
             return true;
@@ -596,6 +652,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             scrollAux(this.$elm, -x, duration, -y, duration);
         }
     });
-    
+
+    Events.Dom.on(document, Events.Touch.touchStartEventName, onDocumentTouchStart);
+    Events.Dom.on(document, Events.Touch.touchEndEventName, onDocumentTouchEnd);
+
     return Scroll;
 });
