@@ -12,7 +12,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
 
     var transitionName = (function () {
         var b = document.body || document.documentElement;
-        var transitionNames = [ "transition", "MozTransition", "WebkitTransition", "OTransition"];
+        var transitionNames = [ "transition", "MozTransition", "WebkitTransition", "OTransition", "MsTransition"];
+
         for (var i = 0; i < transitionNames.length; ++i) {
             if (transitionNames[i] in b.style) {
                 return transitionNames[i];
@@ -20,7 +21,30 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
         return "transition";
     }());
-    
+
+    var transformObj = (function () {
+        var b = document.body || document.documentElement,
+            transformNames = [ "transform", "MozTransform", "WebkitTransform" ],
+            ret = {
+                cssName: "transition",
+                jsName: "transition"
+            };
+
+        for (var i = 0; i < transformNames.length; ++i) {
+            if (transformNames[i] in b.style) {
+                ret.cssName = transformNames[i];
+                ret.jsName = ret.cssName.substring(0, 1).toLowerCase() + ret.cssName.substring(1);
+                break;
+            }
+        }
+
+        return ret;
+    }()),
+        transformName = transformObj.cssName,
+        transformNameJs = transformObj.jsName;
+
+    transformObj = null;
+
     // requestAnimationFrame polyfill by Erik Möller
     // fixes from Paul Irish and Tino Zijdel
      
@@ -101,7 +125,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             speedY = offsetY / time,
             totalTime = Math.abs(speedY / config.friction),
             finalPos = currentPos - speedY * totalTime;
-            
+
+        console.log("finalPos", finalPos);
+
         if (config.paging) {
             if (finalPos > currentPos + scrollerSize) {
                 finalPos = currentPos + scrollerSize;
@@ -113,8 +139,13 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         } else if (config.snap && config.snap > 0) {
             finalPos = Math.round(finalPos / config.snap) * config.snap;
         }
-        
+
+        console.log("finalPos", finalPos);
+
         var newFinalPositionY = finalPos;
+
+        console.log(contentSize, scrollerSize, -contentSize + scrollerSize, newFinalPositionY < -contentSize + scrollerSize);
+
         if (contentSize < scrollerSize) {
             if (newFinalPositionY < 0) {
                 newFinalPositionY = 0;
@@ -134,7 +165,9 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             totalTime = totalTime * Math.abs((fingerDownPos - newFinalPositionY) / (fingerDownPos - finalPos));
             finalPos = newFinalPositionY;
         }
-        
+
+        console.log("finalPos", finalPos);
+
         if (totalTime > config.totalMaxTime) {
             totalTime = config.totalMaxTime;
         }
@@ -160,8 +193,14 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             return true;
         }
 
-        var content = scroller.$meems_content;
+        var content = scroller.$meems_content,
+            oldX = (scroller.$meems_content_size ? scroller.$meems_content_size.left || 0 : 0),
+            oldY = (scroller.$meems_content_size ? scroller.$meems_content_size.top || 0 : 0);
+
         scroller.$meems_content_size = getObjectDimensions(content);
+
+        scroller.$meems_content_size.left = oldX;
+        scroller.$meems_content_size.top = oldY;
 
         scroller.$meems_old_pos = {
             x: scroller.$meems_content_size.left,
@@ -195,8 +234,13 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             return;
         }
 
-        var content = scroller.$meems_content;
+        var content = scroller.$meems_content,
+            oldX = (scroller.$meems_content_size ? scroller.$meems_content_size.left || 0 : 0),
+            oldY = (scroller.$meems_content_size ? scroller.$meems_content_size.top || 0 : 0);
+
         scroller.$meems_content_size = getObjectDimensions(content);
+        scroller.$meems_content_size.left = oldX;
+        scroller.$meems_content_size.top = oldY;
 
         var pos = Events.Touch.getCursorPosition(e),
             config = scroller.$meems_config,
@@ -333,9 +377,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         if (config.scrollY) {
             var scrollerHeight = scroller.$meems$elm_size.height,
                 contentHeight = scroller.$meems_content_size.height;
-            
+
+            console.log(scroller.$meems_cursor_pos.y, newPos.y, scroller.$meems_old_pos.y, time, scrollerHeight, contentHeight);
             finalY = calculateFinalPositionAndTime(config, scroller.$meems_cursor_pos.y, newPos.y, scroller.$meems_old_pos.y, time, scrollerHeight, contentHeight);
-            
+            console.log(finalY);
             finalYPos = finalY[0];
             finalYPosTime = finalY[1];
             finalY = null;
@@ -371,45 +416,21 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     function scrollAux(scroller, finalXPos, finalXPosTime, finalYPos, finalYPosTime) {
         var config = scroller.$meems_config,
             content = scroller.$meems_content,
-            transitionRule = "";
+            maxTime = Math.max(finalXPosTime || 0, finalYPosTime || 0),
+            transitionRule = "all " + maxTime + "s " + config.timingFunction;
 
-        if (config.scrollY) {
-            transitionRule = "top " + finalYPosTime + "s " + config.timingFunction;
-        }
-        
-        if (config.scrollX) {
-            if (config.scrollY) {
-                transitionRule  += ", ";
-            }
-            
-            transitionRule += "left " + finalXPosTime + "s " + config.timingFunction;
-        }
-
-        if (transitionRule.length > 0) {
+        if (maxTime > 0) {
             content.style[transitionName] = transitionRule;
-            
+            console.log(transitionName, transitionRule);
+
             window.requestAnimationFrame(function () {
-                //var style = content.style;
-                var time = 0;
-                
-                if (finalYPos !== undefined) {
-                    //style.top = (typeof finalYPos === 'string' ? finalYPos : finalYPos + "px");
-                    time = Math.max(time, finalYPosTime);
-                }
-                
-                if (finalXPos !== undefined) {
-                    //style.left = (typeof finalXPos === 'string' ? finalXPos : finalXPos + "px");
-                    time = Math.max(time, finalXPosTime);
-                }
-                
+                console.log("touchend");
                 setContentPos(scroller, finalXPos, finalYPos);
-                
-                if (time > 0) {
-                    touchEndScrollbarAnimation(scroller, time);
-                    Utils.Fn.postPone(function () {
-                        scroller.$meems_handler.fire("scroll:end", -(finalXPos || 0), -(finalYPos || 0));
-                    });
-                }
+
+                touchEndScrollbarAnimation(scroller, maxTime);
+                Utils.Fn.postPone(function () {
+                    scroller.$meems_handler.fire("scroll:end", -(finalXPos || 0), -(finalYPos || 0));
+                });
             });
         }
     }
@@ -496,20 +517,38 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         
         window.requestAnimationFrame(req);
     }
-    
+
+    var matrixPattern = /[\-\d\.]+, [\-\d\.]+, [\-\d\.]+, [\-\d\.]+, ([\-\d\.]+), ([\-\d\.]+)/;
+
     function updateScrollbar(scroller, content) {
         var config = scroller.$meems_config;
         
         if (config.hideScroller) {
             return;
         }
-        
+
+        var animPos = (function () {
+            var style = document.defaultView.getComputedStyle(content, null), m;
+
+            if ((m = style[transformNameJs].match(matrixPattern)) != null) {
+                return {
+                    left : parseFloat(m[1]),
+                    top: parseFloat(m[2])
+                }
+            } else {
+                return {
+                    left : scroller.$meems_content_size.left,
+                    top: scroller.$meems_content_size.top
+                }
+            }
+        }());
+
         if (config.scrollY) {
             var scrollbarY = scroller.$meems_scrollbar_y,
                 scrollerHeight = scroller.$meems$elm_size.height,
                 contentHeight = scroller.$meems_content_size.height,
                 verticalBarH = (Math.min(scrollerHeight, contentHeight) / contentHeight) * scrollerHeight,
-                verticalBarY = (-content.offsetTop / contentHeight) * scrollerHeight;
+                verticalBarY = (-animPos.top / contentHeight) * scrollerHeight;
             
             scrollbarY.style.top = verticalBarY + "px";
             scrollbarY.style.height = verticalBarH + "px";
@@ -520,7 +559,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 scrollerWidth = scroller.$meems$elm_size.width,
                 contentWidth = scroller.$meems_content_size.width,
                 verticalBarW = (Math.min(scrollerWidth, contentWidth) / contentWidth) * scrollerWidth,
-                verticalBarX = (-content.offsetLeft / contentWidth) * scrollerWidth;
+                verticalBarX = (-animPos.left / contentWidth) * scrollerWidth;
             
             scrollbarX.style.left = verticalBarX + "px";
             scrollbarX.style.width = verticalBarW + "px";
@@ -528,15 +567,12 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
     }
     
     var setContentPos = function (scroller, left, top) {
-        if (typeof(left) === 'number') {
-            scroller.$meems_content.style.left = left + "px";
-            scroller.$meems_content_size.left = left;
-        }
-        
-        if (typeof(top) === 'number') {
-            scroller.$meems_content.style.top = top + "px";
-            scroller.$meems_content_size.top = top;
-        }
+        var l = left === undefined ? scroller.$meems_content_size.left || 0 : left || 0,
+            t = top === undefined ? scroller.$meems_content_size.top || 0 : top || 0;
+
+        scroller.$meems_content.style[transformName] = "translate3d(" +  l + "px," + t + "px, 0)";
+        scroller.$meems_content_size.left = l;
+        scroller.$meems_content_size.top = t;
     };
     
     var getObjectDimensions = function (el) {
@@ -560,7 +596,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         config.totalMaxTime = config.totalMaxTime || 1;
         config.totalMaxTimesnap = config.totalMaxTimesnap || 0;
         config.paging = config.paging === true;
-        config.snap = config.snap === true;
+        config.snap = config.snap || 0;
         config.scrollY = config.scrollY !== false;
         config.scrollX =  config.scrollX === true;
         config.timingFunction = config.timingFunction || "ease-out";
