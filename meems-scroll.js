@@ -430,6 +430,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         elm.$meems_scrollbar_y = document.createElement("div");
         elm.$meems_scrollbar_y.className = "ui-scroll-bar-y";
         elm.$meems_scrollbar_y.style.position = "absolute";
+        elm.$meems_scrollbar_y.style.display = 'none';
         elm.appendChild(elm.$meems_scrollbar_y);
     }
     
@@ -440,6 +441,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         elm.$meems_scrollbar_x = document.createElement("div");
         elm.$meems_scrollbar_x.className = "ui-scroll-bar-x";
         elm.$meems_scrollbar_x.style.position = "absolute";
+        elm.$meems_scrollbar_x.style.display = 'none';
         elm.appendChild(elm.$meems_scrollbar_x);
     }
     
