@@ -126,8 +126,6 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             totalTime = Math.abs(speedY / config.friction),
             finalPos = currentPos - speedY * totalTime;
 
-        console.log("finalPos", finalPos);
-
         if (config.paging) {
             if (finalPos > currentPos + scrollerSize) {
                 finalPos = currentPos + scrollerSize;
@@ -140,11 +138,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             finalPos = Math.round(finalPos / config.snap) * config.snap;
         }
 
-        console.log("finalPos", finalPos);
-
         var newFinalPositionY = finalPos;
-
-        console.log(contentSize, scrollerSize, -contentSize + scrollerSize, newFinalPositionY < -contentSize + scrollerSize);
 
         if (contentSize < scrollerSize) {
             if (newFinalPositionY < 0) {
@@ -165,8 +159,6 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             totalTime = totalTime * Math.abs((fingerDownPos - newFinalPositionY) / (fingerDownPos - finalPos));
             finalPos = newFinalPositionY;
         }
-
-        console.log("finalPos", finalPos);
 
         if (totalTime > config.totalMaxTime) {
             totalTime = config.totalMaxTime;
@@ -378,9 +370,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             var scrollerHeight = scroller.$meems$elm_size.height,
                 contentHeight = scroller.$meems_content_size.height;
 
-            console.log(scroller.$meems_cursor_pos.y, newPos.y, scroller.$meems_old_pos.y, time, scrollerHeight, contentHeight);
             finalY = calculateFinalPositionAndTime(config, scroller.$meems_cursor_pos.y, newPos.y, scroller.$meems_old_pos.y, time, scrollerHeight, contentHeight);
-            console.log(finalY);
             finalYPos = finalY[0];
             finalYPosTime = finalY[1];
             finalY = null;
@@ -421,10 +411,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
 
         if (maxTime > 0) {
             content.style[transitionName] = transitionRule;
-            console.log(transitionName, transitionRule);
 
             window.requestAnimationFrame(function () {
-                console.log("touchend");
                 setContentPos(scroller, finalXPos, finalYPos);
 
                 touchEndScrollbarAnimation(scroller, maxTime);
@@ -530,16 +518,16 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         var animPos = (function () {
             var style = document.defaultView.getComputedStyle(content, null), m;
 
-            if ((m = style[transformNameJs].match(matrixPattern)) != null) {
+            if ((m = style[transformNameJs].match(matrixPattern)) !== null) {
                 return {
                     left : parseFloat(m[1]),
                     top: parseFloat(m[2])
-                }
+                };
             } else {
                 return {
                     left : scroller.$meems_content_size.left,
                     top: scroller.$meems_content_size.top
-                }
+                };
             }
         }());
 
@@ -594,7 +582,6 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         config = config || {};
         config.friction = config.friction || 100.0;
         config.totalMaxTime = config.totalMaxTime || 1;
-        config.totalMaxTimesnap = config.totalMaxTimesnap || 0;
         config.paging = config.paging === true;
         config.snap = config.snap || 0;
         config.scrollY = config.scrollY !== false;
