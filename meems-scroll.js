@@ -212,6 +212,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
 
         ++$scrollersDragging;
 
+        updateScrollbarsSize(scroller);
+
         return true;
         //return cancelEvent(e);
     }
@@ -291,9 +293,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             scroller.$meems_locked_axis = (offsetX * offsetX > offsetY * offsetY ? 'x' : 'y');
         }
 
-        var content = scroller.$meems_content,
-            //style = content.style,
-            posX, posY;
+        var posX, posY;
         
         if (config.scrollX && (scroller.$meems_locked_axis === 'x' || scroller.$meems_locked_axis === undefined)) {
             posX = scroller.$meems_old_pos.x - offsetX;
@@ -334,7 +334,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         setContentPos(scroller, posX, posY);
         
         scroller.$meems_cursor_last_pos = newPos;
-        updateScrollbar(scroller, content);
+        fastUpdateScrollbar(scroller, posX, posY);
         
         if (e.preventDefault) {
             e.preventDefault();
@@ -537,22 +537,69 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             var scrollbarY = scroller.$meems_scrollbar_y,
                 scrollerHeight = scroller.$meems$elm_size.height,
                 contentHeight = scroller.$meems_content_size.height,
-                verticalBarH = (Math.min(scrollerHeight, contentHeight) / contentHeight) * scrollerHeight,
                 verticalBarY = (-animPos.top / contentHeight) * scrollerHeight;
             
             scrollbarY.style.top = verticalBarY + "px";
-            scrollbarY.style.height = verticalBarH + "px";
         }
         
         if (config.scrollX) {
             var scrollbarX = scroller.$meems_scrollbar_x,
                 scrollerWidth = scroller.$meems$elm_size.width,
                 contentWidth = scroller.$meems_content_size.width,
-                verticalBarW = (Math.min(scrollerWidth, contentWidth) / contentWidth) * scrollerWidth,
                 verticalBarX = (-animPos.left / contentWidth) * scrollerWidth;
             
             scrollbarX.style.left = verticalBarX + "px";
+        }
+    }
+
+    function updateScrollbarsSize(scroller) {
+        var config = scroller.$meems_config;
+
+        if (config.hideScroller) {
+            return;
+        }
+
+        if (config.scrollY) {
+            var scrollerHeight = scroller.$meems$elm_size.height,
+                contentHeight = scroller.$meems_content_size.height,
+                verticalBarH = (Math.min(scrollerHeight, contentHeight) / contentHeight) * scrollerHeight;
+
+            scroller.$meems_scrollbar_y.style.height = verticalBarH + "px";
+        }
+
+        if (config.scrollX) {
+            var scrollbarX = scroller.$meems_scrollbar_x,
+                scrollerWidth = scroller.$meems$elm_size.width,
+                contentWidth = scroller.$meems_content_size.width,
+                verticalBarW = (Math.min(scrollerWidth, contentWidth) / contentWidth) * scrollerWidth;
+
             scrollbarX.style.width = verticalBarW + "px";
+        }
+    }
+
+    function fastUpdateScrollbar(scroller, x, y) {
+        var config = scroller.$meems_config;
+
+        if (config.hideScroller) {
+            return;
+        }
+
+        if (config.scrollY) {
+            var scrollbarY = scroller.$meems_scrollbar_y,
+                scrollerHeight = scroller.$meems$elm_size.height,
+                contentHeight = scroller.$meems_content_size.height,
+                verticalBarY = (-y / contentHeight) * scrollerHeight;
+
+            scrollbarY.style.top = verticalBarY + "px";
+        }
+
+        if (config.scrollX) {
+            var scrollbarX = scroller.$meems_scrollbar_x,
+                scrollerWidth = scroller.$meems$elm_size.width,
+                contentWidth = scroller.$meems_content_size.width,
+                verticalBarX = (-x / contentWidth) * scrollerWidth;
+
+            scrollbarX.style.left = verticalBarX + "px";
         }
     }
     
