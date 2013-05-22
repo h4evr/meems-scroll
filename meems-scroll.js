@@ -189,7 +189,10 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             oldX = (scroller.$meems_content_size ? scroller.$meems_content_size.left || 0 : 0),
             oldY = (scroller.$meems_content_size ? scroller.$meems_content_size.top || 0 : 0);
 
+        content.style[transitionName] = "";
+
         scroller.$meems_content_size = getObjectDimensions(content);
+        scroller.$meems$elm_size = getObjectDimensions(scroller);
 
         scroller.$meems_content_size.left = oldX;
         scroller.$meems_content_size.top = oldY;
@@ -198,8 +201,6 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
             x: scroller.$meems_content_size.left,
             y: scroller.$meems_content_size.top
         };
-
-        content.style[transitionName] = "";
 
         scroller.$meems_dragging = true;
         scroller.$meems_dragging_start = (new Date()).getTime();
@@ -538,8 +539,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 scrollerHeight = scroller.$meems$elm_size.height,
                 contentHeight = scroller.$meems_content_size.height,
                 verticalBarY = (-animPos.top / contentHeight) * scrollerHeight;
-            
-            scrollbarY.style.top = verticalBarY + "px";
+
+            scrollbarY.style[transformName] = "translate3d(0,"+verticalBarY+"px,0)";
         }
         
         if (config.scrollX) {
@@ -547,8 +548,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 scrollerWidth = scroller.$meems$elm_size.width,
                 contentWidth = scroller.$meems_content_size.width,
                 verticalBarX = (-animPos.left / contentWidth) * scrollerWidth;
-            
-            scrollbarX.style.left = verticalBarX + "px";
+
+            scrollbarX.style[transformName] = "translate3d(" +  verticalBarX + "px,0,0)";
         }
     }
 
@@ -590,7 +591,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 contentHeight = scroller.$meems_content_size.height,
                 verticalBarY = (-y / contentHeight) * scrollerHeight;
 
-            scrollbarY.style.top = verticalBarY + "px";
+            //scrollbarY.style.top = verticalBarY + "px";
+            scrollbarY.style[transformName] = "translate3d(0,"+verticalBarY+"px,0)";
         }
 
         if (config.scrollX) {
@@ -599,7 +601,8 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                 contentWidth = scroller.$meems_content_size.width,
                 verticalBarX = (-x / contentWidth) * scrollerWidth;
 
-            scrollbarX.style.left = verticalBarX + "px";
+            //scrollbarX.style.left = verticalBarX + "px";
+            scrollbarX.style[transformName] = "translate3d(" +  verticalBarX + "px,0,0)";
         }
     }
     
