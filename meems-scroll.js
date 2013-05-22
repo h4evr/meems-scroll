@@ -123,7 +123,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
                                             time, scrollerSize, contentSize) {
         var offsetY = fingerDownPos - fingerUpPos,
             speedY = offsetY / time,
-            totalTime = Math.abs(speedY / config.friction),
+            totalTime = time / config.friction, //Math.abs(speedY / config.friction),
             finalPos = currentPos - speedY * totalTime;
 
         if (config.paging) {
@@ -163,7 +163,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         if (totalTime > config.totalMaxTime) {
             totalTime = config.totalMaxTime;
         }
-        
+
         return [finalPos, totalTime];
     }
     
@@ -362,7 +362,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         }
             
         var newPos = scroller.$meems_cursor_last_pos,
-            time = ((new Date()).getTime() - scroller.$meems_dragging_start) / 1000.0;
+            time = Math.min(2.0, ((new Date()).getTime() - scroller.$meems_dragging_start) / 1000.0);
         
         var finalY, finalYPos, finalYPosTime,
             finalX, finalXPos, finalXPosTime;
@@ -632,7 +632,7 @@ define(["meems-utils", "meems-events"], function (Utils, Events) {
         Events.Handler.apply(this, arguments); // super
         
         config = config || {};
-        config.friction = config.friction || 100.0;
+        config.friction = config.friction || 0.2;
         config.totalMaxTime = config.totalMaxTime || 1;
         config.paging = config.paging === true;
         config.snap = config.snap || 0;
